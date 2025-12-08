@@ -228,3 +228,18 @@ model WorkspaceMember {
 
   @@unique([userId, workspaceId])
 }
+
+model Notification {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String?   // null = broadcast to all workspace members
+  type        String    // member_joined, task_due, task_assigned, etc
+  title       String
+  message     String
+  link        String?   // Optional link to navigate to
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, userId])
+  @@index([workspaceId, read])
+}

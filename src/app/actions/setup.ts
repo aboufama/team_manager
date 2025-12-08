@@ -105,6 +105,18 @@ export async function joinWorkspace(formData: FormData) {
                     name: user.name
                 }
             })
+
+            // Create notification for all workspace members
+            await prisma.notification.create({
+                data: {
+                    workspaceId: workspace.id,
+                    userId: null, // Broadcast to all
+                    type: 'member_joined',
+                    title: 'New member joined',
+                    message: `${user.name} has joined the workspace.`,
+                    link: '/dashboard/members'
+                }
+            })
         }
 
         // Add user to workspace as Member (Switch context)

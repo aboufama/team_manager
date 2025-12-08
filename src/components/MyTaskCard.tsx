@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Eye } from "lucide-react"
+import { FileText, Eye, Clock } from "lucide-react"
 
 type MyTaskCardProps = {
     task: {
@@ -15,14 +15,14 @@ type MyTaskCardProps = {
         endDate: Date | string | null
         dueDate: Date | string | null
         assignee: { id: string; name: string } | null
-        column: { 
+        column: {
             name: string
-            board: { 
-                project: { 
+            board: {
+                project: {
                     id: string
-                    name: string 
-                } 
-            } 
+                    name: string
+                }
+            }
         } | null
         createdAt: Date | string | null
         updatedAt: Date | string | null
@@ -38,52 +38,55 @@ export function MyTaskCard({ task }: MyTaskCardProps) {
         }
     }
 
+    const getStatusColor = (columnName: string | undefined) => {
+        switch (columnName) {
+            case 'In Progress': return 'bg-blue-500'
+            case 'Review': return 'bg-orange-500'
+            case 'Done': return 'bg-emerald-500'
+            default: return 'bg-gray-400'
+        }
+    }
+
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.column?.name !== 'Done'
+
     return (
-        <>
-            <div className="border rounded-lg p-3 space-y-2 bg-card hover:bg-muted/50 transition-colors">
-                <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <h4 className="text-sm font-semibold truncate">{task.title}</h4>
-                            {task.difficulty && (
-                                <Badge variant="secondary" className="text-[9px] h-4 shrink-0">
-                                    {task.difficulty}
-                                </Badge>
-                            )}
-                        </div>
-                        {task.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                {task.description}
-                            </p>
-                        )}
-                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                            {task.column?.board?.project && (
-                                <div className="flex items-center gap-1">
-                                    <span>{task.column.board.project.name}</span>
-                                </div>
-                            )}
-                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                task.column?.name === 'In Progress' ? 'bg-blue-500' :
-                                task.column?.name === 'Review' ? 'bg-orange-500' : 'bg-gray-400'
-                            }`} />
-                            <span>{task.column?.name || 'Todo'}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 pt-2 border-t">
-                    <Button
-                        onClick={handleViewTask}
-                        size="sm"
-                        className="flex-1 h-7 text-xs"
-                        variant="outline"
-                    >
-                        <Eye className="h-3.5 w-3.5 mr-1.5" />
-                        View Task Details
-                    </Button>
+        <div
+            onClick={handleViewTask}
+            className={`border rounded-lg p-3 bg-card hover:bg-muted/50 transition-colors cursor-pointer ${isOverdue ? 'border-red-300 bg-red-50/50' : ''}`}
+        >
+            {/* Header with title */}
+            <div className="flex items-start gap-2 mb-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium leading-tight line-clamp-2">{task.title}</h4>
                 </div>
             </div>
-        </>
+
+            {/* Description */}
+            {task.description && (
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-2 pl-5">
+                    {task.description}
+                </p>
+            )}
+
+            {/* Footer with project and status */}
+            <div className="flex items-center justify-between gap-2 text-[10px] pl-5">
+                <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+                    {task.column?.board?.project && (
+                        <span className="truncate max-w-[80px]">{task.column.board.project.name}</span>
+                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                        <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(task.column?.name)}`} />
+                        <span>{task.column?.name || 'Todo'}</span>
+                    </div>
+                </div>
+                {isOverdue && (
+                    <Badge variant="destructive" className="text-[9px] h-4 px-1 shrink-0">
+                        <Clock className="w-2.5 h-2.5 mr-0.5" />
+                        Overdue
+                    </Badge>
+                )}
+            </div>
+        </div>
     )
 }
-

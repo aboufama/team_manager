@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
+import { NotificationBell } from "@/components/NotificationBell"
 
 import { Metadata } from 'next'
 
@@ -30,18 +31,27 @@ export default async function DashboardLayout({
             </div>
 
             <div className="flex flex-col flex-1 md:ml-64">
-                <header className="flex h-12 items-center gap-4 border-b bg-background px-4 md:hidden">
-                    <Sheet>
-                        <SheetTrigger asChild>
-                            <Button variant="outline" size="icon" className="h-8 w-8">
-                                <Menu className="h-4 w-4" />
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="p-0 w-64">
-                            <Sidebar />
-                        </SheetContent>
-                    </Sheet>
-                    <span className="text-sm font-semibold">CuPI Platform</span>
+                {/* Mobile header */}
+                <header className="flex h-12 items-center justify-between gap-4 border-b bg-background px-4 md:hidden">
+                    <div className="flex items-center gap-4">
+                        <Sheet>
+                            <SheetTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-8 w-8">
+                                    <Menu className="h-4 w-4" />
+                                </Button>
+                            </SheetTrigger>
+                            <SheetContent side="left" className="p-0 w-64">
+                                <Sidebar />
+                            </SheetContent>
+                        </Sheet>
+                        <span className="text-sm font-semibold">CuPI Platform</span>
+                    </div>
+                    <NotificationBell />
+                </header>
+
+                {/* Desktop notification bar */}
+                <header className="hidden md:flex h-10 items-center justify-end gap-4 border-b bg-background px-4">
+                    <NotificationBell />
                 </header>
 
                 <main className="flex-1 overflow-auto bg-muted/30">
