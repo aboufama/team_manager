@@ -97,7 +97,9 @@ export function Board({ board, projectId, users, sprints = [] }: BoardProps) {
     const [isDragging, setIsDragging] = useState(false)
     const [isPersisting, setIsPersisting] = useState(false)
     const [flashingColumnId, setFlashingColumnId] = useState<string | null>(null)
-    const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(() => new Set(sprints.map(s => s.id)))
+    const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(() =>
+        new Set(sprints.filter(s => s.status === 'Completed').map(s => s.id))
+    )
     const { toast } = useToast()
 
     // Dialog States
