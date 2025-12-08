@@ -1,11 +1,18 @@
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { SetupContent } from "@/app/setup/SetupContent"
+import Link from "next/link"
 
 export default async function LandingPage() {
     const user = await getCurrentUser()
+
+    // If user has a workspace, go to dashboard
     if (user && user.workspaceId) {
         redirect('/dashboard')
+    }
+
+    // If user is logged in but no workspace, go to workspaces
+    if (user && user.id && user.id !== 'pending') {
+        redirect('/workspaces')
     }
 
     return (
@@ -16,14 +23,36 @@ export default async function LandingPage() {
                         Team management solution
                     </h1>
 
-                    <form action="/api/discord/login" method="GET">
-                        <button
-                            type="submit"
-                            className="bg-[#5865f2] hover:bg-[#4752c4] text-white px-8 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
-                        >
-                            Log in with Discord
-                        </button>
-                    </form>
+                    <div className="flex flex-col gap-3">
+                        {/* Show "Continue as" if user has cached Discord info */}
+                        {user && user.name && user.id === 'pending' ? (
+                            <>
+                                <Link
+                                    href="/api/discord/login"
+                                    className="bg-zinc-900 hover:bg-zinc-800 text-white px-8 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2 justify-center"
+                                >
+                                    Continue as {user.name}
+                                </Link>
+                                <form action="/api/discord/login" method="GET">
+                                    <button
+                                        type="submit"
+                                        className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+                                    >
+                                        Use a different account
+                                    </button>
+                                </form>
+                            </>
+                        ) : (
+                            <form action="/api/discord/login" method="GET">
+                                <button
+                                    type="submit"
+                                    className="bg-[#5865f2] hover:bg-[#4752c4] text-white px-8 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
+                                >
+                                    Log in with Discord
+                                </button>
+                            </form>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -49,7 +78,7 @@ export default async function LandingPage() {
                 </div>
             </footer>
 
-            {/* Dither Overlay - z-20 covers Title (z-10) but Card (z-30) is on top */}
+            {/* Dither Overlay */}
             <div
                 className="fixed inset-0 z-20 pointer-events-none opacity-[0.15] mix-blend-multiply"
                 style={{

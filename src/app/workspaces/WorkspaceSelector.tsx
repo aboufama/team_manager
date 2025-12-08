@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Plus, Users, Building2, Loader2, ArrowRight, FolderKanban, CheckCircle, Info } from "lucide-react"
+import { Plus, Users, Building2, Loader2, ArrowRight, FolderKanban, CheckCircle, Info, LogOut } from "lucide-react"
 import { createWorkspace, joinWorkspace, switchWorkspace } from "@/app/actions/setup"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -35,7 +35,7 @@ export function WorkspaceSelector({ user }: { user: any }) {
         startTransition(async () => {
             const res = await switchWorkspace(workspaceId)
             if (res.success) {
-                window.open('/dashboard', '_blank')
+                window.location.href = '/dashboard'
             }
         })
     }
@@ -53,8 +53,7 @@ export function WorkspaceSelector({ user }: { user: any }) {
                     message: "Your new workspace is ready! Click below to continue.",
                     type: "success",
                     onDismiss: () => {
-                        window.open('/dashboard', '_blank')
-                        window.location.reload()
+                        window.location.href = '/dashboard'
                     }
                 })
             }
@@ -75,8 +74,7 @@ export function WorkspaceSelector({ user }: { user: any }) {
                     message: res.message || "You're now part of the workspace! Click below to continue.",
                     type: isAlreadyMember ? "info" : "success",
                     onDismiss: () => {
-                        window.open('/dashboard', '_blank')
-                        window.location.reload()
+                        window.location.href = '/dashboard'
                     }
                 })
             }
@@ -104,6 +102,16 @@ export function WorkspaceSelector({ user }: { user: any }) {
                     </Button>
                     <Button onClick={() => setJoinOpen(true)} variant="outline" className="gap-2 shadow-sm">
                         <Users className="w-4 h-4" /> Join Workspace
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        className="gap-2 text-zinc-500 hover:text-red-600"
+                        onClick={() => {
+                            fetch('/api/auth/logout', { method: 'POST' })
+                                .then(() => window.location.href = '/')
+                        }}
+                    >
+                        <LogOut className="w-4 h-4" /> Log Out
                     </Button>
                 </div>
             </div>

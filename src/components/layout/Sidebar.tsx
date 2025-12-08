@@ -349,13 +349,10 @@ export function Sidebar() {
                     variant="ghost"
                     className="w-full justify-start gap-2 h-9 text-sm"
                     size="sm"
-                    onClick={() => {
-                        fetch('/api/auth/logout', { method: 'POST' })
-                            .then(() => window.location.href = '/')
-                    }}
+                    onClick={() => window.location.href = '/workspaces'}
                 >
-                    <LogOut className="h-4 w-4" />
-                    Log Out
+                    <FolderKanban className="h-4 w-4" />
+                    Back to Workspaces
                 </Button>
             </div>
 
