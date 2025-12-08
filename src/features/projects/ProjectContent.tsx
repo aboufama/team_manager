@@ -1,0 +1,242 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import dynamic from "next/dynamic"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, User, LayoutGrid, Calendar, Plus } from "lucide-react"
+import Link from "next/link"
+import { TaskDialog } from "@/features/kanban/TaskDialog"
+import { TaskPreview } from "@/features/kanban/TaskPreview"
+import { ProjectGanttChart } from "@/features/timeline/ProjectGanttChart"
+import { SprintDialog } from "@/features/sprints/SprintDialog"
+
+// Dynamically import Board to prevent SSR hydration issues
+const Board = dynamic(() => import("@/features/kanban/Board").then(mod => ({ default: mod.Board })), {
+    ssr: false,
+    loading: () => <div className="flex items-center justify-center h-full">Loading board...</div>
+})
+
+type SprintType = {
+    id: string
+    name: string
+    startDate: Date | string
+    endDate: Date | string
+    status: string
+    color: string
+    projectId: string
+    taskCount: number
+    completedCount: number
+}
+
+type TaskType = {
+    id: string
+    title: string
+    description?: string | null
+    columnId: string | null
+    status?: string
+    startDate?: Date | string | null
+    endDate?: Date | string | null
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string | null
+    requireAttachment?: boolean
+    assigneeId?: string | null
+    assignee?: { id: string; name: string } | null
+    assignees?: { user: { id: string; name: string } }[]
+    activityLogs?: { changedByName: string; createdAt: Date | string }[]
+    column?: { name: string } | null
+    comments?: { createdAt: Date | string }[]
+    attachments?: { id: string; createdAt: Date | string }[]
+    sprint?: { id: string; name: string; color: string; status: string } | null
+}
+
+type ProjectContentProps = {
+    project: {
+        id: string
+        name: string
+        lead: { id: string; name: string } | null
+    }
+    board: {
+        id: string
+        columns: {
+            id: string
+            name: string
+            order: number
+            tasks: TaskType[]
+        }[]
+    } | null
+    users: { id: string; name: string }[]
+    sprints?: SprintType[]
+}
+
+export function ProjectContent({ project, board, users, sprints = [] }: ProjectContentProps) {
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const taskIdFromUrl = searchParams.get('task')
+    const viewFromUrl = searchParams.get('view')
+    const [view, setView] = useState<'kanban' | 'gantt'>(viewFromUrl === 'gantt' ? 'gantt' : 'kanban')
+
+    const [previewTask, setPreviewTask] = useState<TaskType | null>(null)
+    const [editTask, setEditTask] = useState<TaskType | null>(null)
+    const [showSprintDialog, setShowSprintDialog] = useState(false)
+    const [userRole, setUserRole] = useState<string>('Member')
+
+    // Fetch user role
+    useEffect(() => {
+        fetch('/api/auth/role')
+            .then(res => res.json())
+            .then(data => setUserRole(data.role || 'Member'))
+            .catch(() => setUserRole('Member'))
+    }, [])
+
+    const canManageSprints = userRole === 'Admin' || userRole === 'Team Lead'
+
+    // Get all tasks for Gantt chart with column and sprint info
+    const allTasks = board?.columns.flatMap(col =>
+        col.tasks.map(task => ({
+            ...task,
+            column: { name: col.name },
+            updatedAt: task.updatedAt,
+            startDate: task.startDate ?? null,
+            endDate: task.endDate ?? null,
+            dueDate: task.dueDate ?? null
+        }))
+    ) || []
+
+    // Find task from URL and open preview
+    useEffect(() => {
+        if (taskIdFromUrl && board) {
+            for (const col of board.columns) {
+                const task = col.tasks.find(t => t.id === taskIdFromUrl)
+                if (task) {
+                    setPreviewTask({ ...task, column: { name: col.name } })
+                    break
+                }
+            }
+        }
+    }, [taskIdFromUrl, board])
+
+    const handleClosePreview = () => {
+        setPreviewTask(null)
+        // Clean URL
+        window.history.replaceState({}, '', `/dashboard/projects/${project.id}`)
+    }
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="shrink-0 border-b bg-background">
+                <div className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="icon" asChild className="h-7 w-7">
+                            <Link href="/dashboard">
+                                <ArrowLeft className="w-4 h-4" />
+                            </Link>
+                        </Button>
+                        <h1 className="text-lg font-semibold">{project.name}</h1>
+                        {canManageSprints && view === 'kanban' && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-3"
+                                onClick={() => setShowSprintDialog(true)}
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                                Add Sprint
+                            </Button>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+
+                        <div className="flex items-center gap-1 border rounded-md">
+                            <Button
+                                variant={view === 'kanban' ? 'default' : 'ghost'}
+                                size="sm"
+                                className="h-7 px-3"
+                                onClick={() => setView('kanban')}
+                            >
+                                <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
+                                Kanban
+                            </Button>
+                            <Button
+                                variant={view === 'gantt' ? 'default' : 'ghost'}
+                                size="sm"
+                                className="h-7 px-3"
+                                onClick={() => setView('gantt')}
+                            >
+                                <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                                Gantt
+                            </Button>
+                        </div>
+                        {project.lead && (
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                <User className="h-3.5 w-3.5" />
+                                <span>Lead: {project.lead.name}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-hidden">
+                {view === 'kanban' ? (
+                    board ? (
+                        <Board
+                            board={board}
+                            projectId={project.id}
+                            users={users}
+                            sprints={sprints}
+                        />
+                    ) : (
+                        <div className="p-10 text-center text-muted-foreground">
+                            No Kanban board found for this project.
+                        </div>
+                    )
+                ) : (
+                    <div className="p-4 h-full overflow-auto">
+                        <ProjectGanttChart
+                            tasks={allTasks}
+                            projectId={project.id}
+                            sprints={sprints}
+                        />
+                    </div>
+                )}
+            </div>
+
+            {previewTask && (
+                <TaskPreview
+                    task={previewTask}
+                    projectId={project.id}
+                    open={true}
+                    onOpenChange={(open) => !open && handleClosePreview()}
+                    onEdit={() => {
+                        setEditTask(previewTask)
+                        setPreviewTask(null)
+                    }}
+                />
+            )}
+
+            {editTask && (
+                <TaskDialog
+                    projectId={project.id}
+                    users={users}
+                    task={editTask}
+                    open={true}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setEditTask(null)
+                            window.history.replaceState({}, '', `/dashboard/projects/${project.id}`)
+                        }
+                    }}
+                />
+            )}
+
+            {/* Sprint Dialog */}
+            <SprintDialog
+                projectId={project.id}
+                open={showSprintDialog}
+                onOpenChange={setShowSprintDialog}
+            />
+        </div>
+    )
+}

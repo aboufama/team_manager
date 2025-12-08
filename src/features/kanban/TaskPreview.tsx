@@ -1,0 +1,1065 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { acceptReviewTask, denyReviewTask } from "@/app/actions/kanban"
+import {
+    Pencil, Calendar, User, Clock,
+    Paperclip, Send, FileText, Upload, Reply, X, Download, Maximize2, Trash2, CheckCircle, XCircle, ChevronDown
+} from "lucide-react"
+
+type Task = {
+    id: string
+    title: string
+    description?: string | null
+    status?: string
+    startDate?: Date | string | null
+    endDate?: Date | string | null
+    dueDate?: Date | string | null
+    requireAttachment?: boolean
+    instructionsFileUrl?: string | null
+    instructionsFileName?: string | null
+    assignee?: { id?: string; name: string } | null
+    column?: { name: string } | null
+    createdAt?: Date | string | null
+    updatedAt?: Date | string | null
+}
+
+type ReplyTo = {
+    id: string
+    content: string
+    authorName: string
+}
+
+type Comment = {
+    id: string
+    content: string
+    authorId: string
+    authorName: string
+    createdAt: string
+    replyToId: string | null
+    replyTo: ReplyTo | null
+}
+
+type CommentWithReplies = Comment & {
+    replies: CommentWithReplies[]
+}
+
+type Attachment = {
+    id: string
+    name: string
+    url: string
+    size: number
+    type: string
+    uploadedBy?: string
+    createdAt: string
+}
+
+type TaskPreviewProps = {
+    task: Task
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    onEdit: () => void
+    projectId: string
+}
+
+const formatTimeAgo = (date: string) => {
+    const diff = new Date().getTime() - new Date(date).getTime()
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+    if (days > 0) return `${days}d ago`
+    if (hours > 0) return `${hours}h ago`
+    if (minutes > 0) return `${minutes}m ago`
+    return 'Just now'
+}
+
+type CommentNodeProps = {
+    comment: CommentWithReplies
+    depth?: number
+    userRole: string
+    currentUserId?: string
+    onReply: (comment: CommentWithReplies) => void
+    onDelete: (commentId: string) => void
+}
+
+const CommentNode = ({ comment, depth = 0, userRole, currentUserId, onReply, onDelete }: CommentNodeProps) => {
+    const isReply = depth > 0
+    const isOwner = userRole === 'Admin' || userRole === 'Team Lead' || comment.authorId === currentUserId
+
+    return (
+        <div className={`flex flex-col ${isReply ? 'mt-3 pl-8 relative' : 'mt-4'}`}>
+            {isReply && (
+                <div className="absolute top-0 left-3 bottom-0 w-px bg-border -z-10 h-full" />
+            )}
+            {isReply && (
+                <div className="absolute top-3 left-3 w-4 h-px bg-border" />
+            )}
+
+            <div className="group flex gap-3">
+                <div className="shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary ring-2 ring-background z-10">
+                    {comment.authorName.charAt(0).toUpperCase()}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                        <span className="text-[11px] font-medium text-foreground">{comment.authorName}</span>
+                        <span className="text-[9px] text-muted-foreground">{formatTimeAgo(comment.createdAt)}</span>
+                    </div>
+
+                    <div className="text-[11px] text-foreground/90 leading-relaxed whitespace-pre-wrap break-words">
+                        {comment.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+                            if (part.match(/^https?:\/\//)) {
+                                return (
+                                    <a
+                                        key={i}
+                                        href={part}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline break-all"
+                                    >
+                                        {part}
+                                    </a>
+                                )
+                            }
+                            return <span key={i}>{part}</span>
+                        })}
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                            onClick={() => onReply(comment)}
+                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-pointer p-0 bg-transparent border-0"
+                        >
+                            <Reply className="w-3 h-3" />
+                            Reply
+                        </button>
+
+                        {isOwner && (
+                            <button
+                                onClick={() => onDelete(comment.id)}
+                                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors cursor-pointer p-0 bg-transparent border-0"
+                                title="Delete comment"
+                            >
+                                <Trash2 className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {comment.replies.length > 0 && (
+                <div className="w-full">
+                    {comment.replies.map(reply => (
+                        <CommentNode
+                            key={reply.id}
+                            comment={reply}
+                            depth={depth + 1}
+                            userRole={userRole}
+                            currentUserId={currentUserId}
+                            onReply={onReply}
+                            onDelete={onDelete}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return '—'
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const isImageFile = (filename: string) => {
+    const ext = filename.toLowerCase().split('.').pop()
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext || '')
+}
+
+const isPdfFile = (filename: string) => {
+    const ext = filename.toLowerCase().split('.').pop()
+    return ext === 'pdf'
+}
+
+// Build comment tree structure
+const buildCommentTree = (comments: Comment[]): CommentWithReplies[] => {
+    const commentMap = new Map<string, CommentWithReplies>()
+    const rootComments: CommentWithReplies[] = []
+
+    // First pass: create map of all comments with empty replies array
+    comments.forEach(comment => {
+        // @ts-ignore - we know we are building the recursive structure
+        commentMap.set(comment.id, { ...comment, replies: [] })
+    })
+
+    // Second pass: build tree structure
+    comments.forEach(comment => {
+        const commentWithReplies = commentMap.get(comment.id)!
+        if (comment.replyToId && commentMap.has(comment.replyToId)) {
+            // This is a reply, add it to parent's replies
+            const parent = commentMap.get(comment.replyToId)!
+            parent.replies.push(commentWithReplies)
+        } else {
+            // This is a root comment
+            rootComments.push(commentWithReplies)
+        }
+    })
+
+    return rootComments
+}
+
+export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: TaskPreviewProps) {
+    const [comments, setComments] = useState<Comment[]>([])
+    const [attachments, setAttachments] = useState<Attachment[]>([])
+    const [newComment, setNewComment] = useState("")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isLoadingComments, setIsLoadingComments] = useState(false)
+    const [commentError, setCommentError] = useState<string | null>(null)
+    const [replyingTo, setReplyingTo] = useState<Comment | null>(null)
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
+    const [userRole, setUserRole] = useState<string>('Member')
+    const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null)
+    const [isProcessingReview, setIsProcessingReview] = useState(false)
+    const [isDragging, setIsDragging] = useState(false)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const [instructionsFile, setInstructionsFile] = useState<{ url: string; name: string } | null>(null)
+    const [showInstructionsFullscreen, setShowInstructionsFullscreen] = useState(false)
+    const [taskDetailsExpanded, setTaskDetailsExpanded] = useState(false)
+    const commentsEndRef = useRef<HTMLDivElement>(null)
+
+    // Scroll to bottom on new comments
+    useEffect(() => {
+        if (commentsEndRef.current) {
+            commentsEndRef.current.scrollIntoView({ behavior: "smooth" })
+        }
+    }, [comments.length])
+
+    // Fetch user role and info
+    useEffect(() => {
+        if (open) {
+            fetch('/api/auth/role')
+                .then(res => res.json())
+                .then(data => {
+                    setUserRole(data.role || 'Member')
+                    if (data.id) {
+                        setCurrentUser({ id: data.id, name: data.name })
+                    }
+                })
+                .catch(() => {
+                    setUserRole('Member')
+                    setCurrentUser(null)
+                })
+        }
+    }, [open])
+
+    const fetchComments = async () => {
+        if (!task.id) return
+        setIsLoadingComments(true)
+        setCommentError(null)
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/comments`)
+            if (res.ok) {
+                const data = await res.json()
+                const newComments = Array.isArray(data) ? data : []
+                if (JSON.stringify(newComments) !== JSON.stringify(comments)) {
+                    setComments(newComments)
+                }
+            } else {
+                setCommentError('Failed to load comments')
+            }
+        } catch (err) {
+            console.error('Failed to fetch comments:', err)
+            setCommentError('Failed to load comments')
+        } finally {
+            setIsLoadingComments(false)
+        }
+    }
+
+    const fetchAttachments = async () => {
+        if (!task.id) return
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/attachments`)
+            if (res.ok) {
+                const data = await res.json()
+                setAttachments(Array.isArray(data) ? data : [])
+            }
+        } catch (err) {
+            console.error('Failed to fetch attachments:', err)
+        }
+    }
+
+    const fetchInstructions = async () => {
+        if (!task.id) return
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/instructions`)
+            if (res.ok) {
+                const data = await res.json()
+                if (data.url && data.name) {
+                    setInstructionsFile({ url: data.url, name: data.name })
+                } else {
+                    setInstructionsFile(null)
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch instructions:', err)
+        }
+    }
+
+    useEffect(() => {
+        if (open && task.id) {
+            fetchComments()
+            fetchAttachments()
+            fetchInstructions()
+
+            // Set up polling to refresh comments every 5 seconds
+            const interval = setInterval(() => {
+                fetchComments()
+            }, 5000)
+
+            return () => clearInterval(interval)
+        } else {
+            // Reset state when dialog closes
+            setComments([])
+            setAttachments([])
+            setNewComment("")
+            setCommentError(null)
+            setReplyingTo(null)
+            setInstructionsFile(null)
+            setShowInstructionsFullscreen(false)
+        }
+    }, [open, task.id, comments])
+
+    const handleAddComment = async () => {
+        if (!newComment.trim() || isSubmitting) return
+
+        if (!task?.id) {
+            console.error('Cannot create comment: No task ID')
+            setCommentError('Task ID is missing. Please refresh the page.')
+            return
+        }
+
+        setIsSubmitting(true)
+        setCommentError(null)
+
+        try {
+
+            const res = await fetch(`/api/tasks/${task.id}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: newComment,
+                    replyToId: replyingTo?.id || null
+                })
+            })
+
+            let responseText = ''
+            let data: any = null
+
+            try {
+                responseText = await res.text()
+
+                if (responseText) {
+                    data = JSON.parse(responseText)
+                } else {
+                    console.warn('Empty response body')
+                    data = {}
+                }
+            } catch (parseError: any) {
+                console.error('Failed to parse response:', parseError)
+                console.error('Response text that failed to parse:', responseText)
+                setCommentError(`Invalid response from server: ${parseError?.message || 'Parse error'}`)
+                setIsSubmitting(false)
+                return
+            }
+
+            if (res.ok) {
+                if (data && data.id) {
+                    setComments(prev => [...prev, data]) // Add to end since we're showing oldest first
+                    setNewComment("")
+                    setReplyingTo(null)
+                    setCommentError(null)
+                } else {
+                    console.error('Success response but invalid data:', data)
+                    setCommentError('Comment created but failed to display. Please refresh.')
+                }
+            } else {
+                // Log each piece separately to debug
+                console.error('=== COMMENT CREATION FAILED ===')
+                console.error('Response status:', res?.status)
+                console.error('Response statusText:', res?.statusText)
+                console.error('Response OK:', res?.ok)
+                console.error('Response text:', responseText)
+                console.error('Parsed data:', data)
+                console.error('Data type:', typeof data)
+                console.error('Data keys:', data ? Object.keys(data) : 'no data')
+
+                const errorMessage = data?.error || data?.message || `Server error (${res?.status || 'unknown'} ${res?.statusText || 'unknown'})`
+                console.error('Error message:', errorMessage)
+                console.error('==============================')
+
+                setCommentError(errorMessage)
+            }
+        } catch (err: any) {
+            const errorInfo = {
+                name: err?.name || 'Unknown',
+                message: err?.message || 'No message',
+                stack: err?.stack || 'No stack',
+                cause: err?.cause || 'No cause',
+                toString: err?.toString?.() || 'Cannot convert to string',
+                type: typeof err,
+                keys: err ? Object.keys(err) : []
+            }
+            console.error('Failed to add comment - Network/Request error:', err)
+            console.error('Error details:', errorInfo)
+            console.error('Error JSON:', JSON.stringify(errorInfo, null, 2))
+            const errorMessage = err?.message || err?.toString() || 'Network error. Please check your connection and try again.'
+            setCommentError(errorMessage)
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const uploadFile = async (file: File) => {
+        setIsSubmitting(true)
+        setCommentError(null)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const res = await fetch(`/api/tasks/${task.id}/attachments`, {
+                method: 'POST',
+                body: formData
+            })
+            if (res.ok) {
+                const attachment = await res.json()
+                setAttachments(prev => [...prev, attachment])
+                // Refresh attachments list to get proper order
+                fetchAttachments()
+            } else {
+                const error = await res.json().catch(() => ({ error: 'Failed to upload file' }))
+                setCommentError(error.error || 'Failed to upload file')
+            }
+        } catch (err) {
+            console.error('Upload error:', err)
+            setCommentError('Failed to upload file. Please try again.')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        await uploadFile(file)
+        e.target.value = ''
+    }
+
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const handleClickUpload = () => {
+        fileInputRef.current?.click()
+    }
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragging(true)
+    }
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragging(false)
+    }
+
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragging(false)
+
+        const files = Array.from(e.dataTransfer.files)
+        if (files.length > 0) {
+            await uploadFile(files[0])
+        }
+    }
+
+    const handleDeleteAttachment = async (attachmentId: string) => {
+        setIsSubmitting(true)
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/attachments?attachmentId=${attachmentId}`, {
+                method: 'DELETE'
+            })
+            if (res.ok) {
+                setAttachments(prev => prev.filter(a => a.id !== attachmentId))
+            } else {
+                const error = await res.json().catch(() => ({ error: 'Failed to delete file' }))
+                setCommentError(error.error || 'Failed to delete file')
+            }
+        } catch (err) {
+            console.error('Delete error:', err)
+            setCommentError('Failed to delete file. Please try again.')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+
+
+    const handleDeleteComment = async (commentId: string) => {
+
+
+        try {
+            const res = await fetch(`/api/tasks/${task.id}/comments?commentId=${commentId}`, {
+                method: 'DELETE'
+            })
+
+            if (res.ok) {
+                // Optimistically remove from UI
+                const removeFromTree = (nodes: CommentWithReplies[]): CommentWithReplies[] => {
+                    return nodes.filter(node => {
+                        if (node.id === commentId) return false
+                        if (node.replies.length > 0) {
+                            node.replies = removeFromTree(node.replies)
+                        }
+                        return true
+                    })
+                }
+                // Refresh comments to be sure
+                fetchComments()
+            }
+        } catch (err) {
+            console.error('Failed to delete comment:', err)
+        }
+    }
+
+
+
+    const daysActive = task.createdAt
+        ? Math.floor((new Date().getTime() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+        : 0
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.column?.name !== 'Done'
+    const isReviewColumn = task.column?.name === 'Review'
+    const isAdminOrLead = userRole === 'Admin' || userRole === 'Team Lead'
+    const showReviewButtons = isReviewColumn && isAdminOrLead
+
+    const handleAccept = async () => {
+        if (!projectId) return
+
+        setIsProcessingReview(true)
+        try {
+            // Find the Done column
+            const response = await fetch(`/api/projects/${projectId}/columns`)
+            if (!response.ok) throw new Error('Failed to fetch columns')
+
+            const columns = await response.json()
+            const doneColumn = columns.find((c: { name: string }) => c.name === 'Done')
+
+            if (!doneColumn) {
+                alert('Done column not found')
+                setIsProcessingReview(false)
+                return
+            }
+
+            const result = await acceptReviewTask(task.id, doneColumn.id, projectId)
+            if (result.error) {
+                alert(result.error)
+            } else {
+                onOpenChange(false)
+                window.location.reload()
+            }
+        } catch (error) {
+            console.error('Failed to accept task:', error)
+            alert('Failed to accept task')
+        } finally {
+            setIsProcessingReview(false)
+        }
+    }
+
+    const handleDeny = async () => {
+        if (!projectId) return
+
+        setIsProcessingReview(true)
+        try {
+            // Find the In Progress column
+            const response = await fetch(`/api/projects/${projectId}/columns`)
+            if (!response.ok) throw new Error('Failed to fetch columns')
+
+            const columns = await response.json()
+            const inProgressColumn = columns.find((c: { name: string }) => c.name === 'In Progress')
+
+            if (!inProgressColumn) {
+                alert('In Progress column not found')
+                setIsProcessingReview(false)
+                return
+            }
+
+            const result = await denyReviewTask(task.id, inProgressColumn.id, projectId)
+            if (result.error) {
+                alert(result.error)
+            } else {
+                onOpenChange(false)
+                window.location.reload()
+            }
+        } catch (error) {
+            console.error('Failed to deny task:', error)
+            alert('Failed to deny task')
+        } finally {
+            setIsProcessingReview(false)
+        }
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false}>
+                {/* Header */}
+                {/* Header */}
+                <DialogHeader className="px-3 py-2 border-b shrink-0">
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <DialogTitle className="text-sm font-semibold">{task.title}</DialogTitle>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                {task.column?.name && <Badge variant="outline" className="text-[9px] h-4">{task.column.name}</Badge>}
+                                {isOverdue && <Badge variant="destructive" className="text-[9px] h-4">Overdue</Badge>}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                            <Button variant="ghost" size="icon" onClick={onEdit} className="shrink-0 h-6 w-6 border-0">
+                                <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="shrink-0 h-6 w-6 border-0">
+                                <X className="h-3 w-3" />
+                            </Button>
+                        </div>
+                    </div>
+                </DialogHeader>
+
+                {/* Main Content - Native Scrollable Div */}
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="p-3 space-y-3">
+                        {/* Compact Info Row */}
+                        <div className="flex items-center gap-2 text-[10px] flex-wrap bg-muted/50 rounded p-1.5">
+                            <span className="flex items-center gap-0.5">
+                                <User className="h-2.5 w-2.5 text-muted-foreground" />
+                                <span className="text-muted-foreground">{task.assignee?.name || 'Unassigned'}</span>
+                            </span>
+                            <span className="text-muted-foreground/30">•</span>
+                            <span className="flex items-center gap-0.5">
+                                <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                                <span className="text-muted-foreground">{daysActive}d active</span>
+                            </span>
+                            <span className="text-muted-foreground/30">•</span>
+                            <span className="flex items-center gap-0.5">
+                                <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
+                                <span className="text-muted-foreground">{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
+                            </span>
+                        </div>
+
+                        {/* Task Details - Collapsible section with description and instructions */}
+                        {(task.description || instructionsFile) && (
+                            <Collapsible open={taskDetailsExpanded} onOpenChange={setTaskDetailsExpanded}>
+                                <CollapsibleTrigger asChild>
+                                    <button className="flex items-center justify-between w-full py-2 px-2 -mx-2 rounded hover:bg-muted/50 transition-colors group">
+                                        <span className="text-xs font-semibold flex items-center gap-1.5">
+                                            <FileText className="h-3.5 w-3.5" />
+                                            Task Details
+                                        </span>
+                                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${taskDetailsExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="space-y-3">
+                                    {/* Description */}
+                                    {task.description && (
+                                        <div className="pt-1">
+                                            <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                                {task.description}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Instructions File */}
+                                    {instructionsFile && (
+                                        <div className="border rounded-lg bg-muted/30 p-2.5">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                                                    <FileText className="h-3 w-3" />
+                                                    Instructions File
+                                                </span>
+                                                <a
+                                                    href={instructionsFile.url}
+                                                    download={instructionsFile.name}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="h-6 text-[10px] gap-1 px-2 inline-flex items-center hover:bg-muted rounded"
+                                                    title="Download"
+                                                >
+                                                    <Download className="h-2.5 w-2.5" />
+                                                    Download
+                                                </a>
+                                            </div>
+                                            <div
+                                                className="bg-background rounded border overflow-hidden cursor-pointer hover:ring-1 ring-primary/30 transition-all"
+                                                onClick={() => setShowInstructionsFullscreen(true)}
+                                            >
+                                                {isImageFile(instructionsFile.name) ? (
+                                                    <img
+                                                        src={instructionsFile.url}
+                                                        alt="Instructions"
+                                                        className="w-full max-h-32 object-contain"
+                                                    />
+                                                ) : isPdfFile(instructionsFile.name) ? (
+                                                    <div className="h-32 flex items-center justify-center">
+                                                        <iframe
+                                                            src={instructionsFile.url}
+                                                            className="w-full h-full pointer-events-none"
+                                                            title="Instructions PDF"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-3 text-center">
+                                                        <FileText className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+                                                        <p className="text-xs font-medium truncate">{instructionsFile.name}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </CollapsibleContent>
+                            </Collapsible>
+                        )}
+
+                        {/* Files Section */}
+                        <div className="border-t pt-2">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-medium flex items-center gap-1">
+                                    <Paperclip className="h-2.5 w-2.5" />Files ({attachments.length})
+                                </span>
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                onChange={handleFileUpload}
+                                disabled={isSubmitting}
+                            />
+                            {/* Unified Attachments List */}
+                            <div className="w-full overflow-x-auto overflow-y-hidden custom-scrollbar -mx-3 px-3">
+                                <div className="flex gap-2 pb-2 min-w-max">
+                                    {/* Render all attachments */}
+                                    {attachments.map(a => {
+                                        if (isImageFile(a.name)) {
+                                            return (
+                                                <div key={a.id} className="relative group bg-muted/50 rounded overflow-hidden border border-muted shrink-0 w-24 h-24 flex-shrink-0">
+                                                    <img
+                                                        src={a.url}
+                                                        alt={a.name}
+                                                        className="w-full h-full object-cover pointer-events-none select-none"
+                                                        loading="lazy"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 z-20">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setEnlargedImage(a.url)
+                                                            }}
+                                                            className="p-1.5 bg-background/90 rounded hover:bg-background shadow-sm"
+                                                            title="Enlarge"
+                                                        >
+                                                            <Maximize2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleDeleteAttachment(a.id)
+                                                            }}
+                                                            className="p-1.5 bg-background/90 rounded hover:bg-destructive/20 shadow-sm"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                                        </button>
+                                                    </div>
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-[7px] px-1 py-1 pointer-events-none">
+                                                        <div className="truncate font-medium">{a.name}</div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        } else {
+                                            // PDF & Files
+                                            return (
+                                                <div key={a.id} className="relative group w-24 h-24 bg-muted/50 rounded border border-muted flex flex-col items-center justify-center text-center p-2 shrink-0">
+                                                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
+                                                        <a
+                                                            href={a.url}
+                                                            download={a.name}
+                                                            className="p-1 bg-background/90 rounded hover:bg-background shadow-sm"
+                                                            title="Download"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <Download className="w-3 h-3" />
+                                                        </a>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleDeleteAttachment(a.id)
+                                                            }}
+                                                            className="p-1 bg-background/90 rounded hover:bg-destructive/20 shadow-sm"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="w-3 h-3 text-destructive" />
+                                                        </button>
+                                                    </div>
+
+                                                    <a
+                                                        href={a.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex flex-col items-center justify-center w-full h-full gap-1 group-hover:opacity-50 transition-opacity"
+                                                    >
+                                                        <FileText className={`h-8 w-8 ${isPdfFile(a.name) ? 'text-red-400' : 'text-blue-400'}`} />
+                                                        <div className="w-full overflow-hidden">
+                                                            <p className="text-[9px] font-medium truncate w-full px-1">{a.name}</p>
+                                                            <p className="text-[8px] text-muted-foreground">{formatFileSize(a.size)}</p>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                            )
+                                        }
+                                    })}
+
+                                    {/* Upload Box */}
+                                    <div
+                                        onClick={handleClickUpload}
+                                        className="w-24 h-24 border-2 border-dashed rounded flex flex-col items-center justify-center cursor-pointer transition-colors border-muted bg-muted/30 hover:bg-muted/50 shrink-0"
+                                    >
+                                        <Upload className="h-4 w-4 text-muted-foreground" />
+                                        <p className="text-[8px] text-muted-foreground mt-0.5">Add</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Comments Section */}
+                        <div className="border-t pt-2 flex flex-col min-h-0">
+                            <div className="flex items-center justify-between mb-1.5 shrink-0">
+                                <span className="text-[10px] font-medium flex items-center gap-1">
+                                    Comments ({comments.length})
+                                </span>
+                                {isLoadingComments && (
+                                    <span className="text-[8px] text-muted-foreground">Loading...</span>
+                                )}
+                            </div>
+
+                            {commentError && (
+                                <div className="mb-2 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive shrink-0">
+                                    {commentError}
+                                </div>
+                            )}
+
+                            {/* Reply Preview */}
+                            {replyingTo && (
+                                <div className="flex items-center gap-1.5 bg-primary/10 rounded px-2 py-1 mb-1.5 border-l-2 border-primary shrink-0">
+                                    <Reply className="w-3 h-3 text-primary shrink-0" />
+                                    <span className="text-[9px] text-muted-foreground">Replying to</span>
+                                    <span className="text-[9px] text-primary font-medium">@{replyingTo.authorName}</span>
+                                    <span className="text-[9px] text-muted-foreground truncate flex-1 min-w-0">{replyingTo.content}</span>
+                                    <button
+                                        onClick={() => setReplyingTo(null)}
+                                        className="p-0.5 hover:bg-background rounded shrink-0"
+                                    >
+                                        <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Add Comment */}
+                            <div className="flex gap-1.5 mb-2 shrink-0">
+                                <Textarea
+                                    ref={textareaRef}
+                                    placeholder={replyingTo ? `Reply to ${replyingTo.authorName}...` : "Write a comment..."}
+                                    value={newComment}
+                                    onChange={e => {
+                                        setNewComment(e.target.value)
+                                        setCommentError(null)
+                                    }}
+                                    className="text-[10px] min-h-[32px] max-h-[80px] resize-none flex-1 min-w-0"
+                                    disabled={isSubmitting}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault()
+                                            handleAddComment()
+                                        }
+                                        if (e.key === 'Escape' && replyingTo) {
+                                            setReplyingTo(null)
+                                        }
+                                    }}
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={handleAddComment}
+                                    disabled={!newComment.trim() || isSubmitting}
+                                    className="shrink-0 h-auto px-2"
+                                >
+                                    <Send className={`h-3 w-3 ${isSubmitting ? 'opacity-50' : ''}`} />
+                                </Button>
+                            </div>
+
+                            {/* Comments List - Scrollable */}
+                            {comments.length > 0 ? (
+                                <div className="flex-1 min-h-0 max-h-[400px]">
+                                    <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
+                                        <div className="pb-4">
+                                            {buildCommentTree(comments).map(comment => (
+                                                <CommentNode
+                                                    key={comment.id}
+                                                    comment={comment}
+                                                    userRole={userRole}
+                                                    currentUserId={currentUser?.id}
+                                                    onReply={(c) => {
+                                                        setReplyingTo(c)
+                                                        textareaRef.current?.focus()
+                                                    }}
+                                                    onDelete={handleDeleteComment}
+                                                />
+                                            ))}
+                                            <div ref={commentsEndRef} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : !isLoadingComments && (
+                                <div className="text-[9px] text-muted-foreground italic py-4 text-center shrink-0">
+                                    No comments yet. Be the first to comment!
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Review Action Buttons */}
+                {showReviewButtons && (
+                    <div className="border-t px-3 py-3 shrink-0 bg-muted/30">
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={handleAccept}
+                                disabled={isProcessingReview}
+                                size="sm"
+                                className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                                <CheckCircle className="h-4 w-4 mr-1.5" />
+                                Accept
+                            </Button>
+                            <Button
+                                onClick={handleDeny}
+                                disabled={isProcessingReview}
+                                size="sm"
+                                className="flex-1 h-8 text-xs bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                <XCircle className="h-4 w-4 mr-1.5" />
+                                Deny
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </DialogContent>
+
+            {/* Image Enlargement Modal */}
+            {enlargedImage && (
+                <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+                    <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+                        <DialogHeader className="sr-only">
+                            <DialogTitle>Enlarged Image</DialogTitle>
+                        </DialogHeader>
+                        <div className="relative">
+                            <img
+                                src={enlargedImage}
+                                alt="Enlarged"
+                                className="w-full h-auto max-h-[85vh] object-contain"
+                            />
+                            <div className="absolute top-2 right-2 flex gap-2">
+                                <a
+                                    href={enlargedImage}
+                                    download
+                                    className="p-2 bg-background/80 rounded hover:bg-background"
+                                    title="Download"
+                                >
+                                    <Download className="w-4 h-4" />
+                                </a>
+                                <button
+                                    onClick={() => setEnlargedImage(null)}
+                                    className="p-2 bg-background/80 rounded hover:bg-background"
+                                    title="Close"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Instructions File Fullscreen Modal */}
+            {showInstructionsFullscreen && instructionsFile && (
+                <Dialog open={showInstructionsFullscreen} onOpenChange={() => setShowInstructionsFullscreen(false)}>
+                    <DialogContent className="max-w-5xl max-h-[95vh] p-0 overflow-hidden flex flex-col">
+                        <DialogHeader className="p-4 border-b shrink-0">
+                            <DialogTitle className="flex items-center gap-2 pr-8">
+                                <FileText className="h-5 w-5" />
+                                Instructions: {instructionsFile.name}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="flex-1 min-h-0 overflow-auto bg-muted/30">
+                            {isImageFile(instructionsFile.name) ? (
+                                <div className="p-4 flex items-center justify-center min-h-full">
+                                    <img
+                                        src={instructionsFile.url}
+                                        alt="Instructions"
+                                        className="max-w-full max-h-[calc(95vh-80px)] object-contain"
+                                    />
+                                </div>
+                            ) : isPdfFile(instructionsFile.name) ? (
+                                <iframe
+                                    src={instructionsFile.url}
+                                    className="w-full h-[calc(95vh-80px)]"
+                                    title="Instructions PDF"
+                                />
+                            ) : (
+                                <div className="p-8 text-center">
+                                    <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                                    <p className="text-lg font-medium mb-2">{instructionsFile.name}</p>
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        This file type cannot be previewed directly.
+                                    </p>
+                                    <a
+                                        href={instructionsFile.url}
+                                        download={instructionsFile.name}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download File
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+        </Dialog>
+    )
+}

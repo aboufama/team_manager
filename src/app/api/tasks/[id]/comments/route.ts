@@ -1,0 +1,160 @@
+import { NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
+
+export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await params
+        const comments = await prisma.comment.findMany({
+            where: { taskId: id },
+            orderBy: { createdAt: 'asc' },
+            include: {
+                replyTo: {
+                    select: {
+                        id: true,
+                        content: true,
+                        authorName: true
+                    }
+                }
+            }
+        })
+        return NextResponse.json(comments)
+    } catch (error) {
+        return NextResponse.json([], { status: 200 })
+    }
+}
+
+export async function POST(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    let taskId: string | null = null
+    try {
+        const resolvedParams = await params
+        taskId = resolvedParams.id
+
+        if (!taskId) {
+            return NextResponse.json({ error: 'Task ID is required' }, { status: 400 })
+        }
+
+        const user = await getCurrentUser()
+
+        if (!user) {
+            return NextResponse.json({ error: 'Authentication required. Please log in.' }, { status: 401 })
+        }
+
+        if (!user.id || user.id === 'pending') {
+            return NextResponse.json({ error: 'Please complete your profile setup.' }, { status: 401 })
+        }
+
+        const dbUser = await prisma.user.findUnique({
+            where: { id: user.id }
+        })
+
+        if (!dbUser) {
+            return NextResponse.json({ error: 'User account not found. Please log in again.' }, { status: 401 })
+        }
+
+        let body: any = {}
+        try {
+            body = await request.json()
+        } catch (parseError) {
+            return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+        }
+
+        const { content, replyToId } = body
+
+        if (!content || typeof content !== 'string' || content.trim().length === 0) {
+            return NextResponse.json({ error: 'Content is required' }, { status: 400 })
+        }
+
+        const task = await prisma.task.findUnique({
+            where: { id: taskId }
+        })
+
+        if (!task) {
+            return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+        }
+
+        const commentData = {
+            taskId: taskId,
+            content: content.trim(),
+            authorId: dbUser.id,
+            authorName: (dbUser.name || user.name || 'User').substring(0, 255),
+            replyToId: replyToId || null
+        }
+
+        const comment = await prisma.comment.create({
+            data: commentData,
+            include: {
+                replyTo: {
+                    select: {
+                        id: true,
+                        content: true,
+                        authorName: true
+                    }
+                }
+            }
+        })
+
+        return NextResponse.json(comment, { status: 201 })
+    } catch (error: any) {
+        let errorMessage = 'Failed to create comment. Please try again.'
+        if (error?.code === 'P2002') {
+            errorMessage = 'A comment with this data already exists.'
+        } else if (error?.code === 'P2003') {
+            errorMessage = 'Invalid task or user reference.'
+        } else if (error?.message) {
+            errorMessage = error.message
+        }
+
+        return NextResponse.json({
+            error: errorMessage,
+            code: error?.code || 'UNKNOWN_ERROR'
+        }, { status: 500 })
+    }
+}
+
+export async function DELETE(
+    request: Request
+) {
+    try {
+        const url = new URL(request.url)
+        const commentId = url.searchParams.get('commentId')
+
+        if (!commentId) {
+            return NextResponse.json({ error: 'Comment ID is required' }, { status: 400 })
+        }
+
+        const user = await getCurrentUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const comment = await prisma.comment.findUnique({
+            where: { id: commentId }
+        })
+
+        if (!comment) {
+            return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
+        }
+
+        const isAdmin = user.role === 'Admin' || user.role === 'Team Lead'
+        const isOwner = comment.authorId === user.id
+
+        if (!isAdmin && !isOwner) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+        }
+
+        await prisma.comment.delete({
+            where: { id: commentId }
+        })
+
+        return NextResponse.json({ success: true, id: commentId })
+    } catch (error) {
+        return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 })
+    }
+}
