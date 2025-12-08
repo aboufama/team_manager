@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
+import { put, del } from '@vercel/blob'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 
 export async function GET(
     request: Request,
@@ -29,7 +27,7 @@ export async function POST(
     try {
         const { id } = await params
         const user = await getCurrentUser()
-        
+
         if (!user || !user.id || user.id === 'pending') {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
         }
@@ -50,18 +48,11 @@ export async function POST(
             return NextResponse.json({ error: 'Task not found' }, { status: 404 })
         }
 
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = join(process.cwd(), 'public', 'uploads', id)
-        if (!existsSync(uploadsDir)) {
-            await mkdir(uploadsDir, { recursive: true })
-        }
-
-        // Save file
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-        const filepath = join(uploadsDir, filename)
-        await writeFile(filepath, buffer)
+        // Upload to Vercel Blob
+        const filename = `${id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+        const blob = await put(filename, file, {
+            access: 'public',
+        })
 
         // Get max order for this task
         const maxOrder = await prisma.taskAttachment.aggregate({
@@ -76,7 +67,7 @@ export async function POST(
                 name: file.name,
                 size: file.size,
                 type: file.type || 'application/octet-stream',
-                url: `/uploads/${id}/${filename}`,
+                url: blob.url,
                 uploadedBy: user.name || 'User',
                 order: (maxOrder._max.order ?? -1) + 1
             }
@@ -111,7 +102,7 @@ export async function DELETE(
     try {
         const { id } = await params
         const user = await getCurrentUser()
-        
+
         if (!user || !user.id || user.id === 'pending') {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
         }
@@ -132,14 +123,11 @@ export async function DELETE(
             return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
         }
 
-        // Delete file from filesystem
-        const { unlink } = await import('fs/promises')
-        const { join } = await import('path')
-        const filepath = join(process.cwd(), 'public', attachment.url)
+        // Delete from Vercel Blob
         try {
-            await unlink(filepath)
+            await del(attachment.url)
         } catch (e) {
-            console.error('Failed to delete file:', e)
+            console.error('Failed to delete from blob storage:', e)
         }
 
         // Get task info before deleting
@@ -184,7 +172,7 @@ export async function PATCH(
     try {
         const { id } = await params
         const user = await getCurrentUser()
-        
+
         if (!user || !user.id || user.id === 'pending') {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
         }
