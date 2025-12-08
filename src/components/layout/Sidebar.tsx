@@ -55,12 +55,13 @@ type UserData = {
     role: string
     id: string | null
     workspaceName?: string
+    avatar?: string | null
 }
 
 export function Sidebar() {
     const pathname = usePathname()
     const router = useRouter()
-    const [userData, setUserData] = React.useState<UserData>({ name: "User", role: "Member", id: null })
+    const [userData, setUserData] = React.useState<UserData>({ name: "User", role: "Member", id: null, avatar: null })
     const [projects, setProjects] = React.useState<Project[]>([])
     const [leadCandidates, setLeadCandidates] = React.useState<LeadCandidate[]>([])
     const [projectsOpen, setProjectsOpen] = React.useState(true)
@@ -85,7 +86,8 @@ export function Sidebar() {
                     name: data.name || 'User',
                     role: data.role || 'Member',
                     id: data.id,
-                    workspaceName: data.workspaceName
+                    workspaceName: data.workspaceName,
+                    avatar: data.avatar
                 })
             })
             .catch(() => { })
@@ -341,9 +343,17 @@ export function Sidebar() {
 
             <div className="border-t p-4">
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="h-9 w-9 rounded-full bg-[#5865F2] flex items-center justify-center">
-                        <DiscordIcon className="h-5 w-5 text-white" />
-                    </div>
+                    {userData.avatar ? (
+                        <img
+                            src={userData.avatar}
+                            alt={userData.name}
+                            className="h-9 w-9 rounded-full object-cover"
+                        />
+                    ) : (
+                        <div className="h-9 w-9 rounded-full bg-[#5865F2] flex items-center justify-center">
+                            <DiscordIcon className="h-5 w-5 text-white" />
+                        </div>
+                    )}
                     <p className="text-sm font-medium truncate">{userData.name}</p>
                 </div>
                 <Button

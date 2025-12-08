@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import { DeleteWorkspace } from "./DeleteWorkspace"
 import { CopyButton } from "./CopyButton"
 import { DiscordChannelSettings } from "./DiscordChannelSettings"
+import { DisplayNameSettings } from "./DisplayNameSettings"
 import prisma from "@/lib/prisma"
 
 export default async function SettingsPage() {
@@ -40,13 +41,7 @@ export default async function SettingsPage() {
                     <CardTitle className="text-base">Profile</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid gap-2">
-                        <Label>Name</Label>
-                        <Input defaultValue={user.name} disabled />
-                        <p className="text-xs text-muted-foreground">
-                            You can change your display name in the Workspace Hub
-                        </p>
-                    </div>
+                    <DisplayNameSettings initialName={user.name || ''} />
                     <div className="grid gap-2">
                         <Label>Role</Label>
                         <Input defaultValue={user.role} disabled />
