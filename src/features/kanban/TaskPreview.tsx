@@ -234,7 +234,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     const [isLoadingComments, setIsLoadingComments] = useState(false)
     const [commentError, setCommentError] = useState<string | null>(null)
     const [replyingTo, setReplyingTo] = useState<Comment | null>(null)
-    const [enlargedImage, setEnlargedImage] = useState<string | null>(null)
+    const [enlargedImage, setEnlargedImage] = useState<{ url: string; name: string } | null>(null)
     const [userRole, setUserRole] = useState<string>('Member')
     const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null)
     const [isProcessingReview, setIsProcessingReview] = useState(false)
@@ -813,7 +813,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
-                                                                setEnlargedImage(a.url)
+                                                                setEnlargedImage({ url: a.url, name: a.name })
                                                             }}
                                                             className="p-1.5 bg-background/90 rounded hover:bg-background shadow-sm"
                                                             title="Enlarge"
@@ -1024,19 +1024,18 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                         </DialogHeader>
                         <div className="relative">
                             <img
-                                src={enlargedImage}
+                                src={enlargedImage.url}
                                 alt="Enlarged"
                                 className="w-full h-auto max-h-[85vh] object-contain"
                             />
                             <div className="absolute top-2 right-2 flex gap-2">
-                                <a
-                                    href={enlargedImage}
-                                    download
+                                <button
+                                    onClick={() => forceDownload(enlargedImage.url, enlargedImage.name)}
                                     className="p-2 bg-background/80 rounded hover:bg-background"
                                     title="Download"
                                 >
                                     <Download className="w-4 h-4" />
-                                </a>
+                                </button>
                                 <button
                                     onClick={() => setEnlargedImage(null)}
                                     className="p-2 bg-background/80 rounded hover:bg-background"
@@ -1082,14 +1081,13 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                     <p className="text-sm text-muted-foreground mb-4">
                                         This file type cannot be previewed directly.
                                     </p>
-                                    <a
-                                        href={instructionsFile.url}
-                                        download={instructionsFile.name}
+                                    <button
+                                        onClick={() => forceDownload(instructionsFile.url, instructionsFile.name)}
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
                                     >
                                         <Download className="w-4 h-4" />
                                         Download File
-                                    </a>
+                                    </button>
                                 </div>
                             )}
                         </div>

@@ -135,7 +135,10 @@ export async function DELETE(
         }
 
         const comment = await prisma.comment.findUnique({
-            where: { id: commentId }
+            where: { id: commentId },
+            include: {
+                replies: { select: { id: true } }
+            }
         })
 
         if (!comment) {
@@ -149,12 +152,28 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
         }
 
-        await prisma.comment.delete({
-            where: { id: commentId }
-        })
+        // Check if this comment has replies
+        const hasReplies = comment.replies && comment.replies.length > 0
 
-        return NextResponse.json({ success: true, id: commentId })
+        if (hasReplies) {
+            // Soft delete - just replace content with [Deleted]
+            await prisma.comment.update({
+                where: { id: commentId },
+                data: {
+                    content: '[Deleted]',
+                    authorName: 'Deleted'
+                }
+            })
+            return NextResponse.json({ success: true, id: commentId, softDeleted: true })
+        } else {
+            // Hard delete - no replies, safe to remove
+            await prisma.comment.delete({
+                where: { id: commentId }
+            })
+            return NextResponse.json({ success: true, id: commentId, softDeleted: false })
+        }
     } catch (error) {
         return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 })
     }
 }
+
