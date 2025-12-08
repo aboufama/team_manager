@@ -94,7 +94,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                     name: task.assignee.name || 'Unknown'
                 } : null,
                 assignees: task.assignees.map(a => ({
-                    user: { id: a.user.id, name: a.user.name || 'Unknown' }
+                    user: a.user ? { id: a.user.id, name: a.user.name || 'Unknown' } : { id: 'unknown', name: 'Unknown' }
                 })),
                 activityLogs: task.activityLogs.map(log => ({
                     ...log,

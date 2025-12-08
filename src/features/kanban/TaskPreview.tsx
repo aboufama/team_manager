@@ -35,6 +35,7 @@ type Task = {
     column?: { name: string } | null
     createdAt?: Date | string | null
     updatedAt?: Date | string | null
+    assignees?: { user: { id: string; name: string } }[]
 }
 
 type ReplyTo = {
@@ -207,17 +208,27 @@ const buildCommentTree = (comments: Comment[]): CommentWithReplies[] => {
 
     // First pass: create map of all comments with empty replies array
     comments.forEach(comment => {
-        // @ts-ignore - we know we are building the recursive structure
+        // Break references to avoid mutation issues if comments are reused
+        // and ensure we don't accidentally create cycles if IDs are messy
+        // @ts-ignore
         commentMap.set(comment.id, { ...comment, replies: [] })
     })
 
     // Second pass: build tree structure
     comments.forEach(comment => {
         const commentWithReplies = commentMap.get(comment.id)!
-        if (comment.replyToId && commentMap.has(comment.replyToId)) {
+        // Prevent self-referencing loops
+        if (comment.replyToId && comment.replyToId !== comment.id && commentMap.has(comment.replyToId)) {
             // This is a reply, add it to parent's replies
             const parent = commentMap.get(comment.replyToId)!
-            parent.replies.push(commentWithReplies)
+            // Check if parent is not already a child of this comment (simple cycle check)
+            // For deep cycle check we'd need more logic, but this covers 1-level cycles
+            if (!parent.replyToId || parent.replyToId !== comment.id) {
+                parent.replies.push(commentWithReplies)
+            } else {
+                // Fallback for immediate cycle: treat as root
+                rootComments.push(commentWithReplies)
+            }
         } else {
             // This is a root comment
             rootComments.push(commentWithReplies)
@@ -721,15 +732,19 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                         <div className="flex items-center gap-2 text-[10px] flex-wrap bg-muted/50 rounded p-1.5">
                             <span className="flex items-center gap-0.5">
                                 <User className="h-2.5 w-2.5 text-muted-foreground" />
-                                <span className="text-muted-foreground">{task.assignee?.name || 'Unassigned'}</span>
+                                <span className="text-muted-foreground">
+                                    {task.assignees && task.assignees.length > 0
+                                        ? task.assignees.map(a => a.user.name).join(', ')
+                                        : (task.assignee?.name || 'Unassigned')}
+                                </span>
                             </span>
                             <span className="text-muted-foreground/30">•</span>
-                            <span className="flex items-center gap-0.5">
+                            <span className="flex items-center gap-0.5" suppressHydrationWarning>
                                 <Clock className="h-2.5 w-2.5 text-muted-foreground" />
                                 <span className="text-muted-foreground">{daysActive}d active</span>
                             </span>
                             <span className="text-muted-foreground/30">•</span>
-                            <span className="flex items-center gap-0.5">
+                            <span className="flex items-center gap-0.5" suppressHydrationWarning>
                                 <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
                                 <span className="text-muted-foreground">{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
                             </span>
