@@ -27,16 +27,31 @@ export default async function LandingPage() {
                         {/* Show "Continue as" if user has cached Discord info */}
                         {user && user.name && user.id === 'pending' ? (
                             <>
+                                <div className="flex flex-col items-center gap-4 mb-2">
+                                    {user.avatar ? (
+                                        <img
+                                            src={user.avatar} // Pending users have full URL
+                                            alt={user.name}
+                                            className="w-20 h-20 rounded-full border-4 border-white shadow-lg"
+                                        />
+                                    ) : (
+                                        <div className="w-20 h-20 rounded-full bg-zinc-100 flex items-center justify-center border-4 border-white shadow-lg">
+                                            <span className="text-2xl font-bold text-zinc-400">
+                                                {user.name.charAt(0).toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                                 <Link
                                     href="/api/discord/login"
-                                    className="bg-zinc-900 hover:bg-zinc-800 text-white px-8 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2 justify-center"
+                                    className="bg-zinc-900 hover:bg-zinc-800 text-white px-8 py-3 rounded-xl font-medium transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2 justify-center w-full"
                                 >
                                     Continue as {user.name}
                                 </Link>
-                                <form action="/api/discord/login" method="GET">
+                                <form action="/api/discord/login" method="GET" className="w-full">
                                     <button
                                         type="submit"
-                                        className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+                                        className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors w-full"
                                     >
                                         Use a different account
                                     </button>

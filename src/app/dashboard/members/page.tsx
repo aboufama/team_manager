@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { RoleSelect } from "./RoleSelect"
@@ -35,7 +35,13 @@ export default async function MembersPage() {
     return (
         <div className="flex flex-col gap-4 md:gap-6 p-4 md:p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                <h1 className="text-xl md:text-2xl font-semibold">Team Members</h1>
+                <div className="flex items-center gap-3">
+                    <h1 className="text-xl md:text-2xl font-semibold">Team Members</h1>
+                    <span className="text-sm text-muted-foreground hidden md:inline">
+                        Manage your team roles and permissions.
+                        {!canChangeRoles && " You need Admin role to change roles."}
+                    </span>
+                </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>Logged in as:</span>
                     <Badge variant="outline" className="font-medium">
@@ -45,14 +51,7 @@ export default async function MembersPage() {
             </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">All Users</CardTitle>
-                    <CardDescription>
-                        Manage your team roles and permissions.
-                        {!canChangeRoles && " You need Admin role to change roles."}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     {/* Mobile: Card View */}
                     <div className="md:hidden space-y-3">
                         {users.map((user) => {

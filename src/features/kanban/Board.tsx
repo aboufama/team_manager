@@ -11,7 +11,7 @@ import {
     DragOverEvent,
 } from "@dnd-kit/core"
 import { arrayMove } from "@dnd-kit/sortable"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Plus, ChevronDown, CheckCircle2, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -82,9 +82,10 @@ type BoardProps = {
     projectId: string
     users: { id: string; name: string }[]
     sprints?: SprintType[]
+    highlightTaskId?: string | null
 }
 
-export function Board({ board, projectId, users, sprints = [] }: BoardProps) {
+export function Board({ board, projectId, users, sprints = [], highlightTaskId }: BoardProps) {
     const router = useRouter()
     const [columns, setColumns] = useState<ColumnData[]>(board.columns)
     const [activeTask, setActiveTask] = useState<Task | null>(null)
@@ -146,6 +147,46 @@ export function Board({ board, projectId, users, sprints = [] }: BoardProps) {
             console.error('Failed to check overdue tasks:', err)
         )
     }, [fetchUserRole])
+
+    const processedHighlightRef = useRef<string | null>(null)
+
+    // Scroll to highlighted task
+    useEffect(() => {
+        if (!highlightTaskId || !mounted) return
+        // Prevent repeated scrolling on re-renders (e.g. drag and drop)
+        if (processedHighlightRef.current === highlightTaskId) return
+
+        const task = columns.flatMap(c => c.tasks).find(t => t.id === highlightTaskId)
+        if (!task) return
+
+        // If task is in a sprint, check if it's collapsed
+        // (For Kanban board, tasks have a sprint property)
+        // If task has no sprint (Backlog), sprintId might be undefined/null effectively
+        const sprintId = task.sprint?.id || ((task as any).sprintId as string) || 'backlog'
+
+        // 1. Ensure sprint is expanded
+        let didExpand = false
+        setCollapsedSprints(prev => {
+            if (sprintId && prev.has(sprintId)) {
+                const next = new Set(prev)
+                next.delete(sprintId)
+                didExpand = true
+                return next
+            }
+            return prev
+        })
+
+        // 2. Scroll into view
+        // If we expanded, wait for animation. If not, scroll immediately (or short delay for safety)
+        setTimeout(() => {
+            const el = document.getElementById(`task-card-${highlightTaskId}`)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                processedHighlightRef.current = highlightTaskId
+            }
+        }, didExpand ? 300 : 100)
+
+    }, [highlightTaskId, mounted, columns])
 
     useEffect(() => {
         const handleFocus = () => fetchUserRole()
@@ -600,6 +641,7 @@ export function Board({ board, projectId, users, sprints = [] }: BoardProps) {
                     userRole={userRole}
                     isFlashing={flashingColumnId === `${sprintId || 'backlog'}::${col.id}`}
                     sprintId={sprintId}
+                    highlightTaskId={highlightTaskId}
                 />
             ))}
         </div>

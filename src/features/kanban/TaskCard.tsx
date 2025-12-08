@@ -28,11 +28,13 @@ type TaskCardProps = {
     isDoneColumn?: boolean
     isAdmin?: boolean
     isDragDisabled?: boolean
+    isHighlighted?: boolean
+    domId?: string
 }
 
 const animateLayoutChanges = () => false
 
-export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn, isAdmin, isDragDisabled }: TaskCardProps) {
+export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn, isAdmin, isDragDisabled, isHighlighted, domId }: TaskCardProps) {
     const {
         setNodeRef,
         attributes,
@@ -104,6 +106,7 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
         return (
             <div
                 ref={setNodeRef}
+                id={domId}
                 style={style}
                 {...attributes}
                 {...(isDragDisabled ? {} : listeners)}
@@ -137,6 +140,7 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
     return (
         <div
             ref={setNodeRef}
+            id={domId}
             style={style}
             {...attributes}
             {...(isDragDisabled ? {} : listeners)}
@@ -211,6 +215,10 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
                         </div>
                     )}
                 </div>
+            )}
+
+            {isHighlighted && (
+                <div className="absolute inset-0 z-10 rounded-lg border-2 border-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)] pointer-events-none animate-highlight-fade" />
             )}
         </div>
     )

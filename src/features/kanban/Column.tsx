@@ -37,9 +37,10 @@ type ColumnProps = {
     userRole?: string
     sprintId?: string | null
     isFlashing?: boolean
+    highlightTaskId?: string | null
 }
 
-export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewColumn, userRole, isFlashing, sprintId }: ColumnProps) {
+export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewColumn, userRole, isFlashing, sprintId, highlightTaskId }: ColumnProps) {
     const isAdmin = userRole === 'Admin' || userRole === 'Team Lead'
     // Members can drop INTO Review, but only Done is fully restricted for non-admins
     const isDropDisabled = !isAdmin && isDoneColumn
@@ -84,7 +85,7 @@ export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewCo
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2">
+            <div className="flex-1 overflow-y-auto space-y-2 p-1">
                 <SortableContext items={column.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                     {column.tasks.map(task => (
                         <TaskCard
@@ -95,6 +96,8 @@ export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewCo
                             isDoneColumn={isDoneColumn}
                             isAdmin={isAdmin}
                             isDragDisabled={isInteractionRestricted}
+                            isHighlighted={task.id === highlightTaskId}
+                            domId={`task-card-${task.id}`}
                         />
                     ))}
                 </SortableContext>

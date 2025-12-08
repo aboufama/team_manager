@@ -29,210 +29,96 @@ export default async function DashboardPage() {
 
     if (!dbUser) return <div className="p-4">User not found. Please log in again.</div>
 
-    // Get tasks where user is assigned (either via legacy assigneeId or new assignees relation)
-    // For Members: only show tasks from their assigned projects
-    let myTasksWhere: any = {
-        OR: [
-            { assigneeId: dbUser.id },
-            { assignees: { some: { userId: dbUser.id } } }
-        ]
-    }
-
-    if (user.role === 'Member') {
-        const memberProjects = await prisma.projectMember.findMany({
-            where: { userId: dbUser.id },
-            select: { projectId: true }
-        })
-        const assignedProjectIds = memberProjects.map(pm => pm.projectId)
-
-        if (assignedProjectIds.length > 0) {
-            myTasksWhere.column = {
-                board: {
-                    projectId: { in: assignedProjectIds }
-                }
-            }
-        } else {
-            // Member with no assigned projects - return empty array
-            myTasksWhere = { id: 'none' } // This will return no results
-        }
-    }
-
-    const myTasks = await prisma.task.findMany({
-        where: myTasksWhere,
-        include: {
-            assignee: { select: { id: true, name: true } },
-            assignees: {
-                include: {
-                    user: { select: { id: true, name: true } }
-                }
-            },
-            column: {
-                include: {
-                    board: {
-                        include: {
-                            project: { select: { id: true, name: true } }
-                        }
-                    }
-                }
-            }
-        },
-        orderBy: { updatedAt: 'desc' }
-    })
-
-    // Filter out Done and Review tasks for pending tasks (Review tasks are out of user's control)
-    const pendingTasks = myTasks.filter(t => t.column?.name !== 'Done' && t.column?.name !== 'Review')
-
-    const overdueTasks = pendingTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date()).length
-
     const isAdmin = user.role === 'Admin'
     const isTeamLead = user.role === 'Team Lead'
     const isMember = user.role === 'Member'
 
-    // Pending review tasks
-    let pendingReviewTasks: {
-        id: string
-        title: string
-        assignee: { name: string } | null
-        column: { board: { project: { id: string; name: string } } } | null
-    }[] = []
+    // --- OPTIMIZATION START ---
+    // Parallelize all independent fetches
 
-    if (user.role === 'Admin') {
-        pendingReviewTasks = await prisma.task.findMany({
-            where: {
-                column: {
-                    name: 'Review',
-                    board: { project: { workspaceId: dbUser.workspaceId } }
-                }
-            },
-            include: {
-                assignee: { select: { name: true } },
-                column: { include: { board: { include: { project: { select: { id: true, name: true } } } } } }
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 10
-        })
-    } else if (user.role === 'Team Lead') {
-        pendingReviewTasks = await prisma.task.findMany({
-            where: { column: { name: 'Review', board: { project: { is: { leadId: dbUser.id } } } } },
-            include: {
-                assignee: { select: { name: true } },
-                column: { include: { board: { include: { project: { select: { id: true, name: true } } } } } }
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 10
-        })
-    }
+    // 1. Fetch My Tasks (User's assigned tasks)
+    const fetchMyTasks = async () => {
+        let myTasksWhere: any = {
+            OR: [
+                { assigneeId: dbUser.id },
+                { assignees: { some: { userId: dbUser.id } } }
+            ]
+        }
 
-    type PendingReviewTaskType = {
-        id: string
-        title: string
-        description: string | null
-        difficulty: string | null
-        startDate: Date | string | null
-        endDate: Date | string | null
-        dueDate: Date | string | null
-        assignee: { id: string; name: string } | null
-        column: {
-            name: string
-            board: { project: { id: string; name: string } }
-        } | null
-        createdAt: Date | string | null
-        updatedAt: Date | string | null
-        reviewSince: Date | string | null
-    }
+        if (user.role === 'Member') {
+            const memberProjects = await prisma.projectMember.findMany({
+                where: { userId: dbUser.id },
+                select: { projectId: true }
+            })
+            const assignedProjectIds = memberProjects.map(pm => pm.projectId)
 
-    // Fetch full task details for pending review display
-    const pendingReviewTasksWithDetails: PendingReviewTaskType[] = (await Promise.all(
-        pendingReviewTasks.map(async (task): Promise<PendingReviewTaskType | null> => {
-            const fullTask = await prisma.task.findUnique({
-                where: { id: task.id },
-                include: {
-                    assignee: { select: { id: true, name: true } },
-                    column: {
-                        include: {
-                            board: {
-                                include: {
-                                    project: { select: { id: true, name: true } }
-                                }
-                            }
-                        }
+            if (assignedProjectIds.length > 0) {
+                myTasksWhere.column = {
+                    board: {
+                        projectId: { in: assignedProjectIds }
                     }
                 }
-            })
-
-            if (!fullTask) return null
-
-            // Find when task was moved to Review
-            const reviewLog = await prisma.activityLog.findFirst({
-                where: {
-                    taskId: task.id,
-                    field: 'status',
-                    newValue: 'Review'
-                },
-                orderBy: { createdAt: 'desc' }
-            })
-
-            return {
-                id: fullTask.id,
-                title: fullTask.title,
-                description: fullTask.description,
-                difficulty: fullTask.difficulty,
-                startDate: fullTask.startDate,
-                endDate: fullTask.endDate,
-                dueDate: fullTask.dueDate,
-                assignee: fullTask.assignee,
-                column: fullTask.column
-                    ? {
-                        name: fullTask.column.name,
-                        board: {
-                            project: {
-                                id: fullTask.column.board.project.id,
-                                name: fullTask.column.board.project.name
-                            }
-                        }
-                    }
-                    : null,
-                createdAt: fullTask.createdAt,
-                updatedAt: fullTask.updatedAt,
-                reviewSince: reviewLog?.createdAt || null
+            } else {
+                myTasksWhere = { id: 'none' }
             }
-        })
-    )).filter((task): task is PendingReviewTaskType => task !== null)
+        }
 
-    // Activity log - comprehensive activity logs
-    let activityLogs: {
-        id: string
-        action: string
-        field: string | null
-        oldValue: string | null
-        newValue: string | null
-        changedBy: string
-        changedByName: string
-        details: string | null
-        taskTitle: string | null
-        createdAt: Date
-        task: {
-            id: string
-            title: string
-            column: {
-                name: string
-                board: {
-                    project: {
-                        id: string
-                        name: string
+        return prisma.task.findMany({
+            where: myTasksWhere,
+            include: {
+                assignee: { select: { id: true, name: true } },
+                assignees: { include: { user: { select: { id: true, name: true } } } },
+                column: {
+                    include: {
+                        board: {
+                            include: { project: { select: { id: true, name: true } } }
+                        }
                     }
                 }
-            } | null
-        } | null
-    }[] = []
-
-    if (user.role === 'Admin') {
-        activityLogs = await prisma.activityLog.findMany({
-            where: {
-                task: {
-                    column: { board: { project: { workspaceId: dbUser.workspaceId } } }
-                }
             },
+            orderBy: { updatedAt: 'desc' }
+        })
+    }
+
+    // 2. Fetch Pending Review Tasks (Admin/Team Lead only)
+    const fetchPendingReviews = async () => {
+        if (user.role !== 'Admin' && user.role !== 'Team Lead') return []
+
+        const where = user.role === 'Admin'
+            ? { column: { name: 'Review', board: { project: { workspaceId: dbUser.workspaceId } } } }
+            : { column: { name: 'Review', board: { project: { is: { leadId: dbUser.id } } } } }
+
+        const tasks = await prisma.task.findMany({
+            where,
+            include: {
+                assignee: { select: { id: true, name: true } },
+                column: { include: { board: { include: { project: { select: { id: true, name: true } } } } } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10
+        })
+
+        // Enrich with review log date 
+        // (Optimization: Do this in parallel for the 10 items)
+        return Promise.all(tasks.map(async (task) => {
+            const reviewLog = await prisma.activityLog.findFirst({
+                where: { taskId: task.id, field: 'status', newValue: 'Review' },
+                orderBy: { createdAt: 'desc' },
+                select: { createdAt: true }
+            })
+            return {
+                ...task,
+                reviewSince: reviewLog?.createdAt || null,
+                difficulty: task.difficulty // Preserve original type shape
+            }
+        }))
+    }
+
+    // 3. Fetch Activity Logs (Admin only)
+    const fetchActivityLogs = async () => {
+        if (user.role !== 'Admin') return []
+        return prisma.activityLog.findMany({
+            where: { task: { column: { board: { project: { workspaceId: dbUser.workspaceId } } } } },
             orderBy: { createdAt: 'desc' },
             take: 20,
             include: {
@@ -240,11 +126,7 @@ export default async function DashboardPage() {
                     include: {
                         column: {
                             include: {
-                                board: {
-                                    include: {
-                                        project: { select: { id: true, name: true } }
-                                    }
-                                }
+                                board: { include: { project: { select: { id: true, name: true } } } }
                             }
                         }
                     }
@@ -253,110 +135,75 @@ export default async function DashboardPage() {
         })
     }
 
-    // Get tasks with dates for Gantt chart
-    // For Admin: all tasks with sprints
-    let allTasksWithDates: {
-        id: string
-        title: string
-        startDate: Date | null
-        endDate: Date | null
-        column: { name: string; board: { project: { id: string; name: string } } } | null
-        sprint: { id: string; name: string; color: string } | null
-    }[] = []
+    // 4. Fetch Timeline Data (Gantt)
+    const fetchTimelineData = async () => {
+        if (!isAdmin && !isMember) return [] // Team Lead (if distinct logic needed later)
 
-    if (isAdmin) {
-        allTasksWithDates = await prisma.task.findMany({
-            where: {
-                startDate: { not: null },
-                endDate: { not: null },
-                column: { board: { project: { workspaceId: dbUser.workspaceId } } }
-            },
+        let where: any = {
+            startDate: { not: null },
+            endDate: { not: null },
+        }
+
+        if (isAdmin) {
+            where.column = { board: { project: { workspaceId: dbUser.workspaceId } } }
+        } else if (isMember) {
+            const memberProjects = await prisma.projectMember.findMany({
+                where: { userId: dbUser.id },
+                select: { projectId: true }
+            })
+            const assignedProjectIds = memberProjects.map(pm => pm.projectId)
+            if (assignedProjectIds.length === 0) return []
+
+            where = {
+                ...where,
+                OR: [
+                    { assigneeId: dbUser.id },
+                    { assignees: { some: { userId: dbUser.id } } }
+                ],
+                column: { board: { projectId: { in: assignedProjectIds } } }
+            }
+        }
+
+        return prisma.task.findMany({
+            where,
             include: {
                 column: { include: { board: { include: { project: { select: { id: true, name: true } } } } } },
                 sprint: { select: { id: true, name: true, color: true } }
             },
             orderBy: { startDate: 'asc' },
-            take: 50 // Increased limit
+            take: 50 // Same limit as before
         })
-    } else if (isMember) {
-        // For Members: only their assigned tasks without sprint info needed (MiniGantt not used for member dashboard in same way)
-        const memberProjects = await prisma.projectMember.findMany({
-            where: { userId: dbUser.id },
-            select: { projectId: true }
-        })
-        const assignedProjectIds = memberProjects.map(pm => pm.projectId)
-
-        if (assignedProjectIds.length > 0) {
-            allTasksWithDates = await prisma.task.findMany({
-                where: {
-                    OR: [
-                        { assigneeId: dbUser.id },
-                        { assignees: { some: { userId: dbUser.id } } }
-                    ],
-                    startDate: { not: null },
-                    endDate: { not: null },
-                    column: {
-                        board: {
-                            projectId: { in: assignedProjectIds }
-                        }
-                    }
-                },
-                include: {
-                    column: { include: { board: { include: { project: { select: { id: true, name: true } } } } } },
-                    sprint: { select: { id: true, name: true, color: true } }
-                },
-                orderBy: { startDate: 'asc' }
-            })
-        }
     }
 
+    // 5. Fetch Member Stats (Admin only) - OPTIMIZED
+    const fetchMemberStats = async () => {
+        if (!isAdmin) return []
 
-    // Fetch user stats (admin only)
-    let memberStats: {
-        userId: string
-        userName: string
-        userAvatar: string | null
-        role: string
-        completedTasks: number
-        inProgressTasks: number
-        todoTasks: number
-        totalTasks: number
-    }[] = []
+        // Parallel fetch users and lightweight task data
+        const [allUsers, allTasksLight] = await Promise.all([
+            prisma.user.findMany({
+                where: { workspaceId: dbUser.workspaceId },
+                select: { id: true, name: true, avatar: true, role: true }
+            }),
+            prisma.task.findMany({
+                where: { column: { board: { project: { workspaceId: dbUser.workspaceId } } } },
+                select: {
+                    assigneeId: true,
+                    assignees: { select: { user: { select: { id: true } } } },
+                    column: { select: { name: true } }
+                }
+            })
+        ])
 
-    if (isAdmin) {
-        const allUsers = await prisma.user.findMany({
-            where: { workspaceId: dbUser.workspaceId },
-            select: {
-                id: true,
-                name: true,
-                avatar: true,
-                role: true
-            }
-        })
-
-        const tasksByUser = await prisma.task.findMany({
-            where: {
-                column: { board: { project: { workspaceId: dbUser.workspaceId } } }
-            },
-            include: {
-                assignee: { select: { id: true } },
-                assignees: {
-                    include: {
-                        user: { select: { id: true } }
-                    }
-                },
-                column: { select: { name: true } }
-            }
-        })
-
-        memberStats = allUsers.map(user => {
-            const userTasks = tasksByUser.filter(t =>
+        return allUsers.map(user => {
+            // Filter in memory from lightweight dataset
+            const userTasks = allTasksLight.filter(t =>
                 t.assignees.some(ta => ta.user.id === user.id) ||
-                t.assignee?.id === user.id
+                t.assigneeId === user.id
             )
             const completed = userTasks.filter(t => t.column?.name === 'Done').length
             const inProgress = userTasks.filter(t => t.column?.name === 'In Progress' || t.column?.name === 'Review').length
-            const todo = userTasks.filter(t => t.column?.name === 'Todo' || t.column?.name === 'To Do').length
+            const todo = userTasks.filter(t => t.column?.name && ['Todo', 'To Do'].includes(t.column.name)).length
 
             return {
                 userId: user.id,
@@ -370,6 +217,25 @@ export default async function DashboardPage() {
             }
         })
     }
+
+    // EXECUTE ALL FETCHES IN PARALLEL
+    const [
+        myTasks,
+        pendingReviewTasksWithDetails,
+        activityLogs,
+        allTasksWithDates,
+        memberStats
+    ] = await Promise.all([
+        fetchMyTasks(),
+        fetchPendingReviews(),
+        fetchActivityLogs(),
+        fetchTimelineData(),
+        fetchMemberStats()
+    ])
+
+    // Post-processing
+    const pendingTasks = myTasks.filter(t => t.column?.name !== 'Done' && t.column?.name !== 'Review')
+    const overdueTasks = pendingTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date()).length
 
     const formatTimeAgo = (date: Date) => {
         const diff = new Date().getTime() - new Date(date).getTime()

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
+import { useRouter } from "next/navigation"
 
 import {
     Dialog,
@@ -227,6 +228,7 @@ const buildCommentTree = (comments: Comment[]): CommentWithReplies[] => {
 }
 
 export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: TaskPreviewProps) {
+    const router = useRouter()
     const [comments, setComments] = useState<Comment[]>([])
     const [attachments, setAttachments] = useState<Attachment[]>([])
     const [newComment, setNewComment] = useState("")
@@ -642,7 +644,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                 alert(result.error)
             } else {
                 onOpenChange(false)
-                window.location.reload()
+                router.refresh()
             }
         } catch (error) {
             console.error('Failed to accept task:', error)
@@ -675,7 +677,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                 alert(result.error)
             } else {
                 onOpenChange(false)
-                window.location.reload()
+                router.refresh()
             }
         } catch (error) {
             console.error('Failed to deny task:', error)
@@ -1013,7 +1015,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                 <div className="flex-1 min-h-0 max-h-[400px]">
                                     <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
                                         <div className="pb-4">
-                                            {buildCommentTree(comments).map(comment => (
+                                            {useMemo(() => buildCommentTree(comments), [comments]).map(comment => (
                                                 <CommentNode
                                                     key={comment.id}
                                                     comment={comment}

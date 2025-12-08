@@ -16,6 +16,25 @@ export async function updateUserRole(userId: string, newRole: string) {
         return { error: 'Unauthorized: Only Admins can change roles' }
     }
 
+    // Check if admin is trying to demote themselves
+    if (currentUser.id === userId && newRole !== 'Admin') {
+        // Count how many admins exist in the workspace
+        const adminCount = await prisma.user.count({
+            where: {
+                role: 'Admin',
+                workspaceId: currentUser.workspaceId
+            }
+        })
+
+        // If this is the only admin, prevent self-demotion
+        if (adminCount <= 1) {
+            return {
+                error: 'Cannot remove your admin role: You are the only admin. Please assign another admin first.',
+                requiresAdminAssignment: true
+            }
+        }
+    }
+
     try {
         await prisma.user.update({
             where: { id: userId },

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { User, Eye, Clock, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
@@ -50,6 +51,7 @@ function formatWaitTime(date: Date | string | null): string {
 }
 
 export function PendingReviewTask({ task }: PendingReviewTaskProps) {
+    const router = useRouter()
     const [showTaskPreview, setShowTaskPreview] = useState(false)
 
     return (
@@ -112,8 +114,7 @@ export function PendingReviewTask({ task }: PendingReviewTaskProps) {
                             title="Go to Tasks Board"
                         >
                             <Link
-                                href={`/dashboard/projects/${task.column.board.project.id}?task=${task.id}`}
-                                target="_blank"
+                                href={`/dashboard/projects/${task.column.board.project.id}?highlight=${task.id}`}
                             >
                                 <ArrowUpRight className="h-3.5 w-3.5" />
                             </Link>
@@ -140,7 +141,7 @@ export function PendingReviewTask({ task }: PendingReviewTaskProps) {
                     onOpenChange={(open) => {
                         setShowTaskPreview(open)
                         if (!open) {
-                            window.location.reload()
+                            router.refresh()
                         }
                     }}
                     onEdit={() => { }}

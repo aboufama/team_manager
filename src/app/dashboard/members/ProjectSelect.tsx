@@ -62,11 +62,15 @@ export function ProjectSelect({
     }
 
     const selectedCount = selectedProjectIds.length
+
+    // Get the name of the first selected project
+    const firstProject = allProjects.find(p => selectedProjectIds.includes(p.id))
+
     const displayText = selectedCount === 0
         ? "No projects"
         : selectedCount === 1
-            ? "1 project"
-            : `${selectedCount} projects`
+            ? (firstProject?.name || "1 project")
+            : `${firstProject?.name || "Project"} +${selectedCount - 1}`
 
     return (
         <Popover open={open} onOpenChange={setOpen}>

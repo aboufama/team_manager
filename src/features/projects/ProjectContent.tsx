@@ -74,13 +74,19 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
     const router = useRouter()
     const searchParams = useSearchParams()
     const taskIdFromUrl = searchParams.get('task')
+    const highlightTaskId = searchParams.get('highlight')
     const viewFromUrl = searchParams.get('view')
     const [view, setView] = useState<'kanban' | 'gantt'>(viewFromUrl === 'gantt' ? 'gantt' : 'kanban')
-
     const [previewTask, setPreviewTask] = useState<TaskType | null>(null)
     const [editTask, setEditTask] = useState<TaskType | null>(null)
     const [showSprintDialog, setShowSprintDialog] = useState(false)
     const [userRole, setUserRole] = useState<string>('Member')
+
+    // Handle view change
+    const handleViewChange = (newView: 'kanban' | 'gantt') => {
+        if (newView === view) return
+        setView(newView)
+    }
 
     // Fetch user role
     useEffect(() => {
@@ -147,26 +153,28 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                         )}
                     </div>
                     <div className="flex items-center gap-2 overflow-x-auto">
-
-                        <div className="flex items-center gap-1 border rounded-md shrink-0">
-                            <Button
-                                variant={view === 'kanban' ? 'default' : 'ghost'}
-                                size="sm"
-                                className="h-7 px-2 md:px-3"
-                                onClick={() => setView('kanban')}
+                        <div className="relative flex items-center p-0.5 bg-muted rounded-lg shrink-0 overflow-hidden">
+                            {/* Sliding indicator */}
+                            <div
+                                className={`absolute inset-y-0.5 w-[calc(50%-2px)] bg-primary rounded-md transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${view === 'kanban' ? 'left-0.5' : 'left-[calc(50%+1px)]'}`}
+                                style={{
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                                }}
+                            />
+                            <button
+                                className={`relative z-10 flex items-center gap-1.5 h-7 px-2 md:px-3 rounded-md text-sm font-medium transition-colors duration-200 ${view === 'kanban' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => handleViewChange('kanban')}
                             >
-                                <LayoutGrid className="w-3.5 h-3.5 md:mr-1.5" />
+                                <LayoutGrid className="w-3.5 h-3.5" />
                                 <span className="hidden md:inline">Kanban</span>
-                            </Button>
-                            <Button
-                                variant={view === 'gantt' ? 'default' : 'ghost'}
-                                size="sm"
-                                className="h-7 px-2 md:px-3"
-                                onClick={() => setView('gantt')}
+                            </button>
+                            <button
+                                className={`relative z-10 flex items-center gap-1.5 h-7 px-2 md:px-3 rounded-md text-sm font-medium transition-colors duration-200 ${view === 'gantt' ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => handleViewChange('gantt')}
                             >
-                                <Calendar className="w-3.5 h-3.5 md:mr-1.5" />
+                                <Calendar className="w-3.5 h-3.5" />
                                 <span className="hidden md:inline">Gantt</span>
-                            </Button>
+                            </button>
                         </div>
                         {project.lead && (
                             <div className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground shrink-0">
@@ -186,6 +194,7 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                             projectId={project.id}
                             users={users}
                             sprints={sprints}
+                            highlightTaskId={highlightTaskId}
                         />
                     ) : (
                         <div className="p-10 text-center text-muted-foreground">
@@ -200,8 +209,9 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                             sprints={sprints}
                         />
                     </div>
-                )}
-            </div>
+                )
+                }
+            </div >
 
             {previewTask && (
                 <TaskPreview
@@ -216,20 +226,22 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                 />
             )}
 
-            {editTask && (
-                <TaskDialog
-                    projectId={project.id}
-                    users={users}
-                    task={editTask}
-                    open={true}
-                    onOpenChange={(open) => {
-                        if (!open) {
-                            setEditTask(null)
-                            window.history.replaceState({}, '', `/dashboard/projects/${project.id}`)
-                        }
-                    }}
-                />
-            )}
+            {
+                editTask && (
+                    <TaskDialog
+                        projectId={project.id}
+                        users={users}
+                        task={editTask}
+                        open={true}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setEditTask(null)
+                                window.history.replaceState({}, '', `/dashboard/projects/${project.id}`)
+                            }
+                        }}
+                    />
+                )
+            }
 
             {/* Sprint Dialog */}
             <SprintDialog
@@ -237,6 +249,6 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                 open={showSprintDialog}
                 onOpenChange={setShowSprintDialog}
             />
-        </div>
+        </div >
     )
 }
