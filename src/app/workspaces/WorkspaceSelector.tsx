@@ -82,42 +82,42 @@ export function WorkspaceSelector({ user }: { user: any }) {
     }
 
     return (
-        <div className="w-full max-w-5xl space-y-8 animate-in fade-in zoom-in-95 duration-500">
+        <div className="w-full max-w-5xl space-y-6 md:space-y-8 animate-in fade-in zoom-in-95 duration-500 px-4 md:px-0">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-zinc-200">
-                <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-white shadow-lg">
+            <div className="flex flex-col gap-4 md:gap-6 pb-4 md:pb-6 border-b border-zinc-200">
+                <div className="flex items-center gap-3 md:gap-4">
+                    <Avatar className="h-12 w-12 md:h-16 md:w-16 border-2 border-white shadow-lg">
                         <AvatarImage src={user.avatar} />
                         <AvatarFallback>{user.name?.[0]}</AvatarFallback>
                     </Avatar>
-                    <div className="space-y-1">
-                        <h2 className="text-3xl font-bold tracking-tight text-zinc-900">Your Workspaces</h2>
-                        <p className="text-zinc-500 font-medium">Welcome back, {user.name}</p>
+                    <div className="space-y-0.5 md:space-y-1">
+                        <h2 className="text-xl md:text-3xl font-bold tracking-tight text-zinc-900">Your Workspaces</h2>
+                        <p className="text-sm md:text-base text-zinc-500 font-medium">Welcome back, {user.name}</p>
                     </div>
                 </div>
 
-                <div className="flex gap-3">
-                    <Button onClick={() => setCreateOpen(true)} variant="outline" className="gap-2 shadow-sm">
-                        <Plus className="w-4 h-4" /> Create Workspace
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                    <Button onClick={() => setCreateOpen(true)} variant="outline" className="gap-2 shadow-sm flex-1 md:flex-none text-sm">
+                        <Plus className="w-4 h-4" /> Create
                     </Button>
-                    <Button onClick={() => setJoinOpen(true)} variant="outline" className="gap-2 shadow-sm">
-                        <Users className="w-4 h-4" /> Join Workspace
+                    <Button onClick={() => setJoinOpen(true)} variant="outline" className="gap-2 shadow-sm flex-1 md:flex-none text-sm">
+                        <Users className="w-4 h-4" /> Join
                     </Button>
                     <Button
                         variant="ghost"
-                        className="gap-2 text-zinc-500 hover:text-red-600"
+                        className="gap-2 text-zinc-500 hover:text-red-600 text-sm"
                         onClick={() => {
                             fetch('/api/auth/logout', { method: 'POST' })
                                 .then(() => window.location.href = '/')
                         }}
                     >
-                        <LogOut className="w-4 h-4" /> Log Out
+                        <LogOut className="w-4 h-4" /> <span className="hidden md:inline">Log Out</span>
                     </Button>
                 </div>
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {user.memberships?.map((m: any) => (
                     <Card
                         key={m.workspaceId}

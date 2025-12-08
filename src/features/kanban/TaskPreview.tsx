@@ -627,7 +627,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false}>
+            <DialogContent className="w-[95vw] md:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false}>
                 {/* Header */}
                 {/* Header */}
                 <DialogHeader className="px-3 py-2 border-b shrink-0">

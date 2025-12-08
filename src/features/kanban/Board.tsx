@@ -581,7 +581,7 @@ export function Board({ board, projectId, users, sprints = [] }: BoardProps) {
     }
 
     const renderSprintBoard = (sprintColumns: ColumnData[], sprintId: string | null) => (
-        <div className="grid grid-flow-col auto-cols-[minmax(0,1fr)] gap-3 min-h-[300px]">
+        <div className="flex gap-3 min-h-[300px] overflow-x-auto pb-2 md:grid md:grid-flow-col md:auto-cols-[minmax(0,1fr)] md:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {sprintColumns.sort((a, b) => a.order - b.order).map(col => (
                 <Column
                     key={`${sprintId || 'backlog'}-${col.id}`}

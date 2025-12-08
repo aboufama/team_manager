@@ -409,10 +409,10 @@ export default async function DashboardPage() {
                 )}
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 min-h-0 grid gap-4 grid-cols-12 grid-rows-1">
+            {/* Main Content - Mobile: stack, Desktop: grid */}
+            <div className="flex-1 min-h-0 flex flex-col lg:grid gap-4 lg:grid-cols-12 lg:grid-rows-1 overflow-auto">
                 {/* 1. My Tasks */}
-                <Card className={`flex flex-col min-h-0 ${isAdmin || isTeamLead ? 'col-span-3' : isMember ? 'col-span-6' : 'col-span-6'}`}>
+                <Card className={`flex flex-col min-h-[300px] lg:min-h-0 ${isAdmin || isTeamLead ? 'lg:col-span-3' : isMember ? 'lg:col-span-6' : 'lg:col-span-6'}`}>
                     <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-sm flex items-center gap-2">
@@ -421,9 +421,9 @@ export default async function DashboardPage() {
                             <Badge variant="outline">{pendingTasks.length}</Badge>
                         </div>
                     </CardHeader>
-                    <CardContent className="flex-1 min-h-0 px-2 pb-2">
-                        <ScrollArea className="h-full">
-                            <div className="space-y-2 px-2">
+                    <CardContent className="flex-1 min-h-0 px-2 pb-4 overflow-hidden">
+                        <ScrollArea className="h-full max-h-[400px] lg:max-h-none">
+                            <div className="space-y-2 px-2 pb-2">
                                 {pendingTasks.slice(0, 15).map(task => (
                                     <MyTaskCard
                                         key={task.id}
@@ -452,7 +452,7 @@ export default async function DashboardPage() {
 
                 {/* 2. Admin & Team Lead: Pending Reviews */}
                 {(isAdmin || isTeamLead) && (
-                    <Card className="col-span-3 flex flex-col min-h-0 overflow-hidden">
+                    <Card className="lg:col-span-3 flex flex-col min-h-[250px] lg:min-h-0 overflow-hidden">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-sm flex items-center gap-2">
@@ -462,7 +462,7 @@ export default async function DashboardPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="flex-1 min-h-0 p-3 pt-0 overflow-hidden">
-                            <ScrollArea className="h-full">
+                            <ScrollArea className="h-full max-h-[300px] lg:max-h-none">
                                 <div className="flex flex-col gap-2">
                                     {pendingReviewTasksWithDetails.length > 0 ? (
                                         pendingReviewTasksWithDetails.map(task => (
@@ -481,7 +481,7 @@ export default async function DashboardPage() {
 
                 {/* 3. Admin: Activity Log */}
                 {user.role === 'Admin' && (
-                    <Card className="col-span-3 flex flex-col min-h-0">
+                    <Card className="lg:col-span-3 flex flex-col min-h-[250px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">
                                 <Activity className="h-4 w-4" />Activity Log
@@ -495,14 +495,14 @@ export default async function DashboardPage() {
 
                 {/* 4. Admin: Metrics */}
                 {isAdmin && (
-                    <Card className="col-span-3 flex flex-col min-h-0">
+                    <Card className="lg:col-span-3 flex flex-col min-h-[300px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">
                                 Activity Overview
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="flex-1 min-h-0 p-0">
-                            <ScrollArea className="h-full">
+                            <ScrollArea className="h-full max-h-[400px] lg:max-h-none">
                                 <div className="p-4 space-y-6">
                                     <ProjectTimeline tasks={ganttTasks} />
                                     <div className="pt-2 border-t">
@@ -516,14 +516,14 @@ export default async function DashboardPage() {
 
                 {/* Member Timeline */}
                 {isMember && (
-                    <Card className="col-span-6 flex flex-col min-h-0">
+                    <Card className="lg:col-span-6 flex flex-col min-h-[300px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />My Timeline
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="flex-1 min-h-0 px-2 pb-2">
-                            <ScrollArea className="h-full">
+                            <ScrollArea className="h-full max-h-[400px] lg:max-h-none">
                                 <ProjectTimeline tasks={ganttTasks} />
                             </ScrollArea>
                         </CardContent>

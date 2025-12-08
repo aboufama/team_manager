@@ -66,7 +66,7 @@ export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewCo
     return (
         <div
             ref={setDroppableRef}
-            className={`flex h-full w-full min-w-0 flex-col rounded-lg p-3 transition-all ${getBgClass()} ${isDropDisabled ? 'opacity-50' : ''}`}
+            className={`flex h-full min-w-[280px] md:min-w-0 w-full md:w-auto flex-col rounded-lg p-3 transition-all ${getBgClass()} ${isDropDisabled ? 'opacity-50' : ''}`}
         >
             <div className="flex items-center gap-2 mb-3 px-1">
                 <h3 className={`font-medium text-sm ${isDoneColumn ? 'text-emerald-700' : ''}`}>{column.name}</h3>

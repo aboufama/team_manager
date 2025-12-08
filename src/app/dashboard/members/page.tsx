@@ -33,9 +33,9 @@ export default async function MembersPage() {
     })
 
     return (
-        <div className="flex flex-col gap-6 p-6">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold">Team Members</h1>
+        <div className="flex flex-col gap-4 md:gap-6 p-4 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                <h1 className="text-xl md:text-2xl font-semibold">Team Members</h1>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>Logged in as:</span>
                     <Badge variant="outline" className="font-medium">
@@ -52,7 +52,7 @@ export default async function MembersPage() {
                         {!canChangeRoles && " You need Admin role to change roles."}
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>

@@ -13,8 +13,8 @@ export default async function SettingsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-8 p-6 max-w-2xl">
-            <h1 className="text-2xl font-semibold">Settings</h1>
+        <div className="flex flex-col gap-6 md:gap-8 p-4 md:p-6 max-w-2xl">
+            <h1 className="text-xl md:text-2xl font-semibold">Settings</h1>
 
             {/* Profile */}
             <Card>
