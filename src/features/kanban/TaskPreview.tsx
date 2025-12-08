@@ -244,6 +244,8 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     const [showInstructionsFullscreen, setShowInstructionsFullscreen] = useState(false)
     const [taskDetailsExpanded, setTaskDetailsExpanded] = useState(false)
     const commentsEndRef = useRef<HTMLDivElement>(null)
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+    const [uploadingFileName, setUploadingFileName] = useState<string | null>(null)
 
     // Scroll to bottom on new comments
     useEffect(() => {
@@ -440,28 +442,60 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     const uploadFile = async (file: File) => {
         setIsSubmitting(true)
         setCommentError(null)
+        setUploadProgress(0)
+        setUploadingFileName(file.name)
+
         try {
             const formData = new FormData()
             formData.append('file', file)
 
-            const res = await fetch(`/api/tasks/${task.id}/attachments`, {
-                method: 'POST',
-                body: formData
+            // Use XMLHttpRequest for progress tracking
+            const xhr = new XMLHttpRequest()
+
+            const uploadPromise = new Promise<any>((resolve, reject) => {
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100)
+                        setUploadProgress(progress)
+                    }
+                })
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const response = JSON.parse(xhr.responseText)
+                            resolve(response)
+                        } catch {
+                            reject(new Error('Failed to parse response'))
+                        }
+                    } else {
+                        try {
+                            const error = JSON.parse(xhr.responseText)
+                            reject(new Error(error.error || 'Failed to upload file'))
+                        } catch {
+                            reject(new Error('Failed to upload file'))
+                        }
+                    }
+                })
+
+                xhr.addEventListener('error', () => reject(new Error('Network error')))
+                xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
+
+                xhr.open('POST', `/api/tasks/${task.id}/attachments`)
+                xhr.send(formData)
             })
-            if (res.ok) {
-                const attachment = await res.json()
-                setAttachments(prev => [...prev, attachment])
-                // Refresh attachments list to get proper order
-                fetchAttachments()
-            } else {
-                const error = await res.json().catch(() => ({ error: 'Failed to upload file' }))
-                setCommentError(error.error || 'Failed to upload file')
-            }
-        } catch (err) {
+
+            const attachment = await uploadPromise
+            setAttachments(prev => [...prev, attachment])
+            // Refresh attachments list to get proper order
+            fetchAttachments()
+        } catch (err: any) {
             console.error('Upload error:', err)
-            setCommentError('Failed to upload file. Please try again.')
+            setCommentError(err.message || 'Failed to upload file. Please try again.')
         } finally {
             setIsSubmitting(false)
+            setUploadProgress(null)
+            setUploadingFileName(null)
         }
     }
 
@@ -795,6 +829,23 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                 onChange={handleFileUpload}
                                 disabled={isSubmitting}
                             />
+                            {/* Upload Progress Bar */}
+                            {uploadProgress !== null && (
+                                <div className="mb-2 animate-in fade-in">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">
+                                            Uploading: {uploadingFileName}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground">{uploadProgress}%</span>
+                                    </div>
+                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary transition-all duration-200 ease-out"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                             {/* Unified Attachments List */}
                             <div className="w-full overflow-x-auto overflow-y-hidden custom-scrollbar -mx-3 px-3">
                                 <div className="flex gap-2 pb-2 min-w-max">

@@ -7,6 +7,7 @@ import {
     LayoutDashboard, Users, LogOut, Settings, ChevronDown,
     Plus, MoreHorizontal, FolderKanban, Pencil, Trash2, User
 } from "lucide-react"
+import { DiscordIcon } from "@/components/icons/DiscordIcon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -340,9 +341,9 @@ export function Sidebar() {
 
             <div className="border-t p-4">
                 <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-9 w-9">
-                        <AvatarFallback className="text-sm">{userData.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                    <div className="h-9 w-9 rounded-full bg-[#5865F2] flex items-center justify-center">
+                        <DiscordIcon className="h-5 w-5 text-white" />
+                    </div>
                     <p className="text-sm font-medium truncate">{userData.name}</p>
                 </div>
                 <Button
