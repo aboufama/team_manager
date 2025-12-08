@@ -89,9 +89,13 @@ export async function POST(
         })
 
         return NextResponse.json(attachment, { status: 201 })
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to create attachment:', error)
-        return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+        const errorMessage = error?.message || 'Failed to upload file'
+        return NextResponse.json({
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+        }, { status: 500 })
     }
 }
 

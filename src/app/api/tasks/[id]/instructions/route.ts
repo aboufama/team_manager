@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
+import { put, del } from '@vercel/blob'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { writeFile, mkdir, unlink } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 
 export async function GET(
     request: Request,
@@ -63,34 +61,24 @@ export async function POST(
 
         // Delete old instructions file if exists
         if (task.instructionsFileUrl) {
-            const oldFilePath = join(process.cwd(), 'public', task.instructionsFileUrl)
             try {
-                await unlink(oldFilePath)
+                await del(task.instructionsFileUrl)
             } catch (e) {
                 console.error('Failed to delete old instructions file:', e)
             }
         }
 
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = join(process.cwd(), 'public', 'uploads', 'instructions', id)
-        if (!existsSync(uploadsDir)) {
-            await mkdir(uploadsDir, { recursive: true })
-        }
-
-        // Save file
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-        const filepath = join(uploadsDir, filename)
-        await writeFile(filepath, buffer)
-
-        const fileUrl = `/uploads/instructions/${id}/${filename}`
+        // Upload to Vercel Blob
+        const filename = `instructions/${id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+        const blob = await put(filename, file, {
+            access: 'public',
+        })
 
         // Update task with instructions file
         await prisma.task.update({
             where: { id },
             data: {
-                instructionsFileUrl: fileUrl,
+                instructionsFileUrl: blob.url,
                 instructionsFileName: file.name
             }
         })
@@ -111,12 +99,14 @@ export async function POST(
         })
 
         return NextResponse.json({
-            url: fileUrl,
+            url: blob.url,
             name: file.name
         }, { status: 201 })
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to upload instructions:', error)
-        return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+        return NextResponse.json({
+            error: error?.message || 'Failed to upload file'
+        }, { status: 500 })
     }
 }
 
@@ -144,12 +134,11 @@ export async function DELETE(
             return NextResponse.json({ error: 'No instructions file to delete' }, { status: 400 })
         }
 
-        // Delete file from filesystem
-        const filepath = join(process.cwd(), 'public', task.instructionsFileUrl)
+        // Delete from Vercel Blob
         try {
-            await unlink(filepath)
+            await del(task.instructionsFileUrl)
         } catch (e) {
-            console.error('Failed to delete file:', e)
+            console.error('Failed to delete from blob storage:', e)
         }
 
         const oldFileName = task.instructionsFileName
