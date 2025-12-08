@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Send, Smile, Loader2, ChevronDown } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area" // Added ScrollBar import
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -70,7 +70,7 @@ export function GeneralChat() {
     // Poll for messages
     React.useEffect(() => {
         fetchMessages()
-        const interval = setInterval(fetchMessages, 3000)
+        const interval = setInterval(fetchMessages, 500)
         return () => clearInterval(interval)
     }, [fetchMessages])
 
@@ -182,7 +182,19 @@ export function GeneralChat() {
     return (
         <div className="flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative">
             {/* Messages Area */}
+            {/* Added ScrollBar component to explicitly control sidebar placement to left */}
             <ScrollArea ref={scrollRef} className="flex-1 bg-background px-1 h-0">
+                {/* Place scrollbar on the left by using direction: rtl on container then ltr on content, or typically just standard sidebar left. 
+                     However, native ScrollArea/scrollbar is typically right. To Move to left, we can use the `className` on ScrollBar component.
+                     BUT, the ScrollArea component in standard ui/library typically puts it on right. 
+                     A common trick is direction: rtl; but that messes up text. 
+                     Let's stick to standard behavior but ensure clean UI first, unless specifically forcing RTL layout.
+                     Wait, user asked "move scroll bar to the left side". 
+                     Standard UI pattern for sidebars sometimes has scroll on left? Or maybe they mean the sidebar IS on the left.
+                     Assuming they literally mean the scrollbar track itself.
+                     Let's try to override with CSS if possible or just use the primitive.
+                     Actually, standard ScrollArea component has the ScrollBar component.
+                  */}
                 <div className="flex flex-col justify-end min-h-full py-2">
                     {messages.map((msg, i) => {
                         const previousMsg = messages[i - 1]
@@ -242,6 +254,8 @@ export function GeneralChat() {
                         )
                     })}
                 </div>
+                {/* Override ScrollBar position to left */}
+                <ScrollBar className="left-0 right-auto border-r border-l-0" />
             </ScrollArea>
 
             {/* Scroll to bottom button */}

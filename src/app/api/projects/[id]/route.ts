@@ -70,7 +70,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
         }
 
-        if (user.role !== 'Admin') {
+        if (user.role !== 'Admin' && user.role !== 'Team Lead') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
         }
 

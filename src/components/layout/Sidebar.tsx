@@ -76,10 +76,10 @@ export function Sidebar() {
     const [newProjectLeadId, setNewProjectLeadId] = React.useState("none")
     const [editLeadId, setEditLeadId] = React.useState<string>("none")
 
-    const isAdmin = userData.role === 'Admin'
+    const isAdmin = userData.role === 'Admin' || userData.role === 'Team Lead'
 
     // Fetch user data
-    React.useEffect(() => {
+    const fetchUserData = React.useCallback(() => {
         fetch('/api/auth/role')
             .then(res => res.json())
             .then(data => {
@@ -93,6 +93,13 @@ export function Sidebar() {
             })
             .catch(() => { })
     }, [])
+
+    React.useEffect(() => {
+        fetchUserData()
+        // Poll for role changes
+        const interval = setInterval(fetchUserData, 2000)
+        return () => clearInterval(interval)
+    }, [fetchUserData])
 
     // Fetch projects with lead info
     const fetchProjects = React.useCallback(() => {

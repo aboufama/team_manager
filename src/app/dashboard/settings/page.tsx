@@ -29,7 +29,7 @@ export default async function SettingsPage() {
         })
     }
 
-    const isAdmin = user.role === 'Admin'
+    const isAdmin = user.role === 'Admin' || user.role === 'Team Lead'
 
     return (
         <div className="flex flex-col gap-6 md:gap-8 p-4 md:p-6 max-w-2xl">

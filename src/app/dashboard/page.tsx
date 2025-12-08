@@ -113,9 +113,9 @@ export default async function DashboardPage() {
         }))
     }
 
-    // 3. Fetch Activity Logs (Admin only)
+    // 3. Fetch Activity Logs (Admin & Team Lead)
     const fetchActivityLogs = async () => {
-        if (user.role !== 'Admin') return []
+        if (user.role !== 'Admin' && user.role !== 'Team Lead') return []
         return prisma.activityLog.findMany({
             where: { task: { column: { board: { project: { workspaceId: dbUser.workspaceId } } } } },
             orderBy: { createdAt: 'desc' },
@@ -136,14 +136,15 @@ export default async function DashboardPage() {
 
     // 4. Fetch Timeline Data (Gantt)
     const fetchTimelineData = async () => {
-        if (!isAdmin && !isMember) return [] // Team Lead (if distinct logic needed later)
+        // Now treating Team Lead same as Admin for fetching logic
+        if (!isAdmin && !isTeamLead && !isMember) return []
 
         let where: any = {
             startDate: { not: null },
             endDate: { not: null },
         }
 
-        if (isAdmin) {
+        if (isAdmin || isTeamLead) {
             where.column = { board: { project: { workspaceId: dbUser.workspaceId } } }
         } else if (isMember) {
             const memberProjects = await prisma.projectMember.findMany({
@@ -174,9 +175,9 @@ export default async function DashboardPage() {
         })
     }
 
-    // 5. Fetch Member Stats (Admin only) - OPTIMIZED
+    // 5. Fetch Member Stats (Admin & Team Lead) - OPTIMIZED
     const fetchMemberStats = async () => {
-        if (!isAdmin) return []
+        if (!isAdmin && !isTeamLead) return []
 
         // Parallel fetch users and lightweight task data
         const [allUsers, allTasksLight] = await Promise.all([
@@ -343,8 +344,8 @@ export default async function DashboardPage() {
                     </Card>
                 )}
 
-                {/* 3. Admin: Activity Log */}
-                {user.role === 'Admin' && (
+                {/* 3. Admin & Team Lead: Activity Log */}
+                {(isAdmin || isTeamLead) && (
                     <Card className="lg:col-span-3 flex flex-col min-h-[250px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">
@@ -357,8 +358,8 @@ export default async function DashboardPage() {
                     </Card>
                 )}
 
-                {/* 4. Admin: Metrics */}
-                {isAdmin && (
+                {/* 4. Admin & Team Lead: Metrics */}
+                {(isAdmin || isTeamLead) && (
                     <Card className="lg:col-span-3 flex flex-col min-h-[300px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">

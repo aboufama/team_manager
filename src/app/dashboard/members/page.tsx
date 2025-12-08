@@ -15,7 +15,7 @@ export default async function MembersPage() {
     if (!currentUser) {
         redirect('/')
     }
-    const canChangeRoles = currentUser.role === 'Admin'
+    const canChangeRoles = currentUser.role === 'Admin' || currentUser.role === 'Team Lead'
 
     const users = await prisma.user.findMany({
         where: {
