@@ -74,15 +74,56 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         notFound()
     }
 
-    const board = project.boards[0] || null
-    const users = await prisma.user.findMany({ orderBy: { name: 'asc' } })
+    const boardData = project.boards[0] || null
 
-    // Add computed fields to sprints
+    // Serialize board data to avoid Date object issues across Server/Client boundary
+    // Serialize board data to avoid Date object issues across Server/Client boundary
+    const board = boardData ? {
+        ...boardData,
+        columns: boardData.columns.map(col => ({
+            ...col,
+            tasks: col.tasks.map(task => ({
+                ...task,
+                startDate: task.startDate?.toISOString() || null,
+                endDate: task.endDate?.toISOString() || null,
+                dueDate: task.dueDate?.toISOString() || null,
+                createdAt: task.createdAt?.toISOString(),
+                updatedAt: task.updatedAt?.toISOString() || null,
+                assignee: task.assignee ? {
+                    id: task.assignee.id,
+                    name: task.assignee.name || 'Unknown'
+                } : null,
+                assignees: task.assignees.map(a => ({
+                    user: { id: a.user.id, name: a.user.name || 'Unknown' }
+                })),
+                activityLogs: task.activityLogs.map(log => ({
+                    ...log,
+                    createdAt: log.createdAt.toISOString()
+                })),
+                comments: task.comments.map(comment => ({
+                    ...comment,
+                    createdAt: comment.createdAt.toISOString()
+                })),
+                attachments: task.attachments.map(attachment => ({
+                    ...attachment,
+                    createdAt: attachment.createdAt.toISOString()
+                }))
+            }))
+        }))
+    } : null
+
+    const usersRaw = await prisma.user.findMany({
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true }
+    })
+    const users = usersRaw.map(u => ({ id: u.id, name: u.name || 'Unknown' }))
+
+    // Add computed fields to sprints and serialize dates
     const sprints = project.sprints.map(sprint => ({
         id: sprint.id,
         name: sprint.name,
-        startDate: sprint.startDate,
-        endDate: sprint.endDate,
+        startDate: sprint.startDate.toISOString(),
+        endDate: sprint.endDate.toISOString(),
         status: sprint.status,
         color: sprint.color,
         projectId: sprint.projectId,

@@ -17,6 +17,13 @@ export default async function MembersPage() {
     const canChangeRoles = currentUser.role === 'Admin'
 
     const users = await prisma.user.findMany({
+        where: {
+            memberships: {
+                some: {
+                    workspaceId: currentUser.workspaceId || 'non-existent-id'
+                }
+            }
+        },
         include: {
             projectMemberships: {
                 include: {

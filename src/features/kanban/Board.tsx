@@ -651,6 +651,13 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
             <div className="flex flex-col h-full overflow-y-auto">
                 <div className="flex-1 p-4 space-y-4">
+                    {sprints.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-[50vh] text-muted-foreground border-2 border-dashed rounded-xl m-4 bg-muted/10">
+                            <p className="text-lg font-medium">No sprints yet...</p>
+                            <p className="text-sm mt-1">Create a sprint to get started</p>
+                        </div>
+                    )}
+
                     {[...sprints].sort((a, b) => {
                         const aComplete = isSprintComplete(a.id)
                         const bComplete = isSprintComplete(b.id)
