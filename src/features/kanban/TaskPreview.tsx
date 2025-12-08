@@ -549,7 +549,33 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
         }
     }
 
+    // Force download helper (works with cross-origin URLs like Vercel Blob)
+    const forceDownload = async (url: string, filename: string) => {
+        try {
+            const response = await fetch(url)
+            const blob = await response.blob()
+            const blobUrl = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = filename
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(blobUrl)
+        } catch (err) {
+            console.error('Download failed:', err)
+            // Fallback: open in new tab
+            window.open(url, '_blank')
+        }
+    }
 
+    const downloadAllAttachments = async () => {
+        for (const attachment of attachments) {
+            await forceDownload(attachment.url, attachment.name)
+            // Small delay between downloads
+            await new Promise(resolve => setTimeout(resolve, 300))
+        }
+    }
 
     const daysActive = task.createdAt
         ? Math.floor((new Date().getTime() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60 * 24))
@@ -703,16 +729,17 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                                     <FileText className="h-3 w-3" />
                                                     Instructions File
                                                 </span>
-                                                <a
-                                                    href={instructionsFile.url}
-                                                    download={instructionsFile.name}
-                                                    onClick={(e) => e.stopPropagation()}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        forceDownload(instructionsFile.url, instructionsFile.name)
+                                                    }}
                                                     className="h-6 text-[10px] gap-1 px-2 inline-flex items-center hover:bg-muted rounded"
                                                     title="Download"
                                                 >
                                                     <Download className="h-2.5 w-2.5" />
                                                     Download
-                                                </a>
+                                                </button>
                                             </div>
                                             <div
                                                 className="bg-background rounded border overflow-hidden cursor-pointer hover:ring-1 ring-primary/30 transition-all"
@@ -751,6 +778,15 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                 <span className="text-[10px] font-medium flex items-center gap-1">
                                     <Paperclip className="h-2.5 w-2.5" />Files ({attachments.length})
                                 </span>
+                                {attachments.length > 0 && (
+                                    <button
+                                        onClick={downloadAllAttachments}
+                                        className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
+                                    >
+                                        <Download className="h-2.5 w-2.5" />
+                                        Download All
+                                    </button>
+                                )}
                             </div>
                             <input
                                 ref={fileInputRef}
@@ -805,15 +841,16 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                             return (
                                                 <div key={a.id} className="relative group w-24 h-24 bg-muted/50 rounded border border-muted flex flex-col items-center justify-center text-center p-2 shrink-0">
                                                     <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
-                                                        <a
-                                                            href={a.url}
-                                                            download={a.name}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                forceDownload(a.url, a.name)
+                                                            }}
                                                             className="p-1 bg-background/90 rounded hover:bg-background shadow-sm"
                                                             title="Download"
-                                                            onClick={(e) => e.stopPropagation()}
                                                         >
                                                             <Download className="w-3 h-3" />
-                                                        </a>
+                                                        </button>
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
