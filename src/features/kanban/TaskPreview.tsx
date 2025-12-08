@@ -734,7 +734,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                 <User className="h-2.5 w-2.5 text-muted-foreground" />
                                 <span className="text-muted-foreground">
                                     {task.assignees && task.assignees.length > 0
-                                        ? task.assignees.map(a => a.user.name).join(', ')
+                                        ? task.assignees.map(a => a?.user?.name || 'Unknown').join(', ')
                                         : (task.assignee?.name || 'Unassigned')}
                                 </span>
                             </span>
@@ -1030,19 +1030,27 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                 <div className="flex-1 min-h-0 max-h-[400px]">
                                     <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
                                         <div className="pb-4">
-                                            {useMemo(() => buildCommentTree(comments), [comments]).map(comment => (
-                                                <CommentNode
-                                                    key={comment.id}
-                                                    comment={comment}
-                                                    userRole={userRole}
-                                                    currentUserId={currentUser?.id}
-                                                    onReply={(c) => {
-                                                        setReplyingTo(c)
-                                                        textareaRef.current?.focus()
-                                                    }}
-                                                    onDelete={handleDeleteComment}
-                                                />
-                                            ))}
+                                            {(() => {
+                                                try {
+                                                    const tree = buildCommentTree(comments)
+                                                    return tree.map(comment => (
+                                                        <CommentNode
+                                                            key={comment.id}
+                                                            comment={comment}
+                                                            userRole={userRole}
+                                                            currentUserId={currentUser?.id}
+                                                            onReply={(c) => {
+                                                                setReplyingTo(c)
+                                                                textareaRef.current?.focus()
+                                                            }}
+                                                            onDelete={handleDeleteComment}
+                                                        />
+                                                    ))
+                                                } catch (e) {
+                                                    console.error("Error building comment tree:", e)
+                                                    return <div className="text-destructive text-[10px]">Error loading comments.</div>
+                                                }
+                                            })()}
                                             <div ref={commentsEndRef} />
                                         </div>
                                     </div>
