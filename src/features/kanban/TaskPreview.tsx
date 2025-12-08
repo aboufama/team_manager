@@ -110,12 +110,12 @@ const CommentNode = ({ comment, depth = 0, userRole, currentUserId, onReply, onD
 
             <div className="group flex gap-3">
                 <div className="shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary ring-2 ring-background z-10">
-                    {comment.authorName.charAt(0).toUpperCase()}
+                    {(comment.authorName || 'U').charAt(0).toUpperCase()}
                 </div>
 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                        <span className="text-[11px] font-medium text-foreground">{comment.authorName}</span>
+                        <span className="text-[11px] font-medium text-foreground">{comment.authorName || 'Unknown'}</span>
                         <span className="text-[9px] text-muted-foreground">{formatTimeAgo(comment.createdAt)}</span>
                     </div>
 
@@ -967,7 +967,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                 <div className="flex items-center gap-1.5 bg-primary/10 rounded px-2 py-1 mb-1.5 border-l-2 border-primary shrink-0">
                                     <Reply className="w-3 h-3 text-primary shrink-0" />
                                     <span className="text-[9px] text-muted-foreground">Replying to</span>
-                                    <span className="text-[9px] text-primary font-medium">@{replyingTo.authorName}</span>
+                                    <span className="text-[9px] text-primary font-medium">@{replyingTo.authorName || 'Unknown'}</span>
                                     <span className="text-[9px] text-muted-foreground truncate flex-1 min-w-0">{replyingTo.content}</span>
                                     <button
                                         onClick={() => setReplyingTo(null)}
@@ -982,7 +982,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                             <div className="flex gap-1.5 mb-2 shrink-0">
                                 <Textarea
                                     ref={textareaRef}
-                                    placeholder={replyingTo ? `Reply to ${replyingTo.authorName}...` : "Write a comment..."}
+                                    placeholder={replyingTo ? `Reply to ${replyingTo.authorName || 'Unknown'}...` : "Write a comment..."}
                                     value={newComment}
                                     onChange={e => {
                                         setNewComment(e.target.value)
