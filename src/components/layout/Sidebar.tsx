@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { GeneralChat } from "@/components/layout/GeneralChat"
 
 type Project = {
     id: string
@@ -340,6 +341,10 @@ export function Sidebar() {
                     </div>
                 </nav>
             </ScrollArea>
+
+            <div className="h-[300px] shrink-0 border-t">
+                <GeneralChat />
+            </div>
 
             <div className="border-t p-4">
                 <div className="flex items-center gap-3 mb-3">

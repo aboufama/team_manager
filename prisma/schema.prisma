@@ -242,3 +242,17 @@ model Notification {
   @@index([workspaceId, userId])
   @@index([workspaceId, read])
 }
+
+model GeneralChatMessage {
+  id           String   @id @default(cuid())
+  content      String
+  type         String   @default("text") // text, image, gif
+  authorId     String
+  authorName   String
+  authorAvatar String?
+  workspaceId  String
+  createdAt    DateTime @default(now())
+
+  @@index([workspaceId])
+}
+
