@@ -195,9 +195,9 @@ export function WorkspaceSelector({ user }: { user: any }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Custom Notification Dialog - Waits for user to click Continue */}
-            <Dialog open={!!notification} onOpenChange={() => { }}>
-                <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+            {/* Custom Notification Dialog */}
+            <Dialog open={!!notification} onOpenChange={(open) => { if (!open) handleNotificationDismiss() }}>
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <div className="flex items-center gap-3">
                             {notification?.type === 'success' ? (
