@@ -1,19 +1,23 @@
-
 "use client"
 
 import * as React from "react"
-import { Send, Image as ImageIcon, Smile, X, Loader2, StickyNote } from "lucide-react"
+import { Send, Smile, Loader2, ChevronDown } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+// GIPHY SDK
+import { GiphyFetch } from '@giphy/js-fetch-api'
+import { Grid } from '@giphy/react-components'
+
+const giphyFetch = new GiphyFetch(process.env.NEXT_PUBLIC_GIPHY_API_KEY || "dc6zaTOxFJmzC")
 
 type Message = {
     id: string
     content: string
-    type: string // "text" | "image" | "gif"
+    type: string // "text" | "gif"
     authorId: string
     authorName: string
     authorAvatar: string | null
@@ -23,18 +27,16 @@ type Message = {
 export function GeneralChat() {
     const [messages, setMessages] = React.useState<Message[]>([])
     const [inputValue, setInputValue] = React.useState("")
-    const [isLoading, setIsLoading] = React.useState(false)
-    const [uploading, setUploading] = React.useState(false)
+    const [currentUser, setCurrentUser] = React.useState<{ id: string, name: string } | null>(null)
     const scrollRef = React.useRef<HTMLDivElement>(null)
-    const [currentUser, setCurrentUser] = React.useState<{ id: string } | null>(null)
-
-    // Giphy state
-    const [gifs, setGifs] = React.useState<any[]>([])
-    const [gifSearch, setGifSearch] = React.useState("")
-    const [loadingGifs, setLoadingGifs] = React.useState(false)
     const [giphyOpen, setGiphyOpen] = React.useState(false)
+    const [searchTerm, setSearchTerm] = React.useState("")
 
-    // Fetch user
+    // Scroll state
+    const [showScrollButton, setShowScrollButton] = React.useState(false)
+    const [isAtBottom, setIsAtBottom] = React.useState(true) // Track if user is at bottom
+
+    // Retrieve user identity
     React.useEffect(() => {
         fetch('/api/auth/role')
             .then(res => res.json())
@@ -48,11 +50,11 @@ export function GeneralChat() {
             if (res.ok) {
                 const data = await res.json()
                 setMessages(prev => {
-                    // Only update if different to avoid flicker or scroll jumps if possible
-                    // Ideally check last message ID
                     if (data.length > 0 && Array.isArray(data)) {
                         const lastNew = data[data.length - 1]
                         const lastPrev = prev[prev.length - 1]
+
+                        // Check if we need to update state
                         if (lastNew?.id !== lastPrev?.id || data.length !== prev.length) {
                             return data
                         }
@@ -72,17 +74,57 @@ export function GeneralChat() {
         return () => clearInterval(interval)
     }, [fetchMessages])
 
-    // Scroll to bottom on new messages
+    // Handle auto-scroll
     React.useEffect(() => {
-        if (scrollRef.current) {
-            const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]')
-            if (scrollContainer) {
-                scrollContainer.scrollTop = scrollContainer.scrollHeight
+        if (!scrollRef.current) return;
+
+        // If we are at the bottom, stay at the bottom when new messages come in
+        if (isAtBottom) {
+            const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+            if (viewport) {
+                viewport.scrollTop = viewport.scrollHeight
             }
         }
-    }, [messages])
+    }, [messages, isAtBottom])
 
-    const sendMessage = async (content: string, type: "text" | "image" | "gif" = "text") => {
+    // Scroll listener
+    React.useEffect(() => {
+        const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+        if (!viewport) return
+
+        const handleScroll = () => {
+            const { scrollTop, scrollHeight, clientHeight } = viewport
+            const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+            const atBottom = distanceFromBottom < 50
+
+            setIsAtBottom(atBottom)
+            setShowScrollButton(!atBottom)
+        }
+
+        viewport.addEventListener('scroll', handleScroll)
+        return () => viewport.removeEventListener('scroll', handleScroll)
+    }, [])
+
+    // Force scroll to bottom on mount
+    React.useEffect(() => {
+        // Give it a tick to render layout
+        const timer = setTimeout(() => {
+            const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+            if (viewport) {
+                viewport.scrollTop = viewport.scrollHeight
+            }
+        }, 100)
+        return () => clearTimeout(timer)
+    }, [])
+
+    const scrollToBottom = () => {
+        const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+        if (viewport) {
+            viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
+        }
+    }
+
+    const sendMessage = async (content: string, type: "text" | "gif" = "text") => {
         if (!content.trim()) return
 
         // Optimistic update
@@ -100,20 +142,15 @@ export function GeneralChat() {
         setMessages(prev => [...prev, optimisticMsg])
         setInputValue("")
         setGiphyOpen(false)
+        setIsAtBottom(true) // Force scroll on send
 
         try {
-            const res = await fetch('/api/chat', {
+            await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content, type })
             })
-
-            if (res.ok) {
-                fetchMessages() // Sync with server
-            } else {
-                console.error("Failed to send")
-                // Remove optimistic? Or show error.
-            }
+            fetchMessages()
         } catch (error) {
             console.error(error)
         }
@@ -122,105 +159,84 @@ export function GeneralChat() {
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
-            sendMessage(inputValue)
+            sendMessage(inputValue, "text")
         }
     }
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
+    // Check if we should group the message
+    const shouldGroupMessage = (current: Message, previous: Message | undefined) => {
+        if (!previous) return false
+        if (current.authorId !== previous.authorId) return false
 
-        setUploading(true)
-        const formData = new FormData()
-        formData.append('file', file)
+        const currentTime = new Date(current.createdAt).getTime()
+        const prevTime = new Date(previous.createdAt).getTime()
 
-        try {
-            const res = await fetch('/api/chat/upload', {
-                method: 'POST',
-                body: formData
-            })
-            if (res.ok) {
-                const data = await res.json()
-                await sendMessage(data.url, "image")
-            }
-        } catch (error) {
-            console.error("Upload failed", error)
-        } finally {
-            setUploading(false)
-            // Reset input
-            e.target.value = ""
-        }
+        return (currentTime - prevTime) < 60000 // 1 minute window for grouping
     }
 
-    const searchGifs = React.useCallback(async (query: string) => {
-        setLoadingGifs(true)
-        try {
-            // Use public beta key if no env var, but better to use env
-            const apiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY || "dc6zaTOxFJmzC" // Fallback to public beta key
-            const endpoint = query
-                ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${query}&limit=20`
-                : `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=20`
-
-            const res = await fetch(endpoint)
-            const data = await res.json()
-            setGifs(data.data || [])
-        } catch (e) {
-            console.error(e)
-        } finally {
-            setLoadingGifs(false)
-        }
-    }, [])
-
-    React.useEffect(() => {
-        if (giphyOpen) {
-            searchGifs("")
-        }
-    }, [giphyOpen, searchGifs])
+    const fetchGifs = (offset: number) => {
+        if (searchTerm) return giphyFetch.search(searchTerm, { offset, limit: 10 })
+        return giphyFetch.trending({ offset, limit: 10 })
+    }
 
     return (
-        <div className="flex flex-col h-full w-full border-t bg-background/50 backdrop-blur-sm">
-            <div className="p-2 border-b bg-muted/30">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <StickyNote className="w-3 h-3" />
-                    Workspace Chat
-                </h3>
-            </div>
-
-            <ScrollArea ref={scrollRef} className="flex-1 p-3">
-                <div className="space-y-4">
+        <div className="flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative">
+            {/* Messages Area */}
+            <ScrollArea ref={scrollRef} className="flex-1 bg-background px-1 h-0">
+                <div className="flex flex-col justify-end min-h-full py-2">
                     {messages.map((msg, i) => {
-                        const isMe = msg.authorId === currentUser?.id
-                        const showHeader = i === 0 || messages[i - 1].authorId !== msg.authorId || new Date(msg.createdAt).getTime() - new Date(messages[i - 1].createdAt).getTime() > 60000
+                        const previousMsg = messages[i - 1]
+                        const isGrouped = shouldGroupMessage(msg, previousMsg)
+                        const timeString = new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase()
 
                         return (
-                            <div key={msg.id} className={cn("flex flex-col gap-1", isMe ? "items-end" : "items-start")}>
-                                {showHeader && (
-                                    <div className="flex items-center gap-2 mb-1">
-                                        {!isMe && (
-                                            <>
-                                                <Avatar className="w-4 h-4">
-                                                    <AvatarImage src={msg.authorAvatar || undefined} />
-                                                    <AvatarFallback>{msg.authorName[0]}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="text-[10px] text-muted-foreground font-medium">{msg.authorName}</span>
-                                            </>
-                                        )}
-                                    </div>
+                            <div
+                                key={msg.id}
+                                className={cn(
+                                    "px-2 py-0.5 group flex items-start gap-2 relative",
+                                    !isGrouped && "mt-2"
+                                )}
+                            >
+                                {!isGrouped ? (
+                                    <Avatar className="w-8 h-8 shrink-0 mt-0.5 cursor-pointer">
+                                        <AvatarImage src={msg.authorAvatar || undefined} />
+                                        <AvatarFallback className="text-[10px]">
+                                            {msg.authorName[0]}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                ) : (
+                                    <div className="w-8 shrink-0" />
                                 )}
 
-                                <div className={cn(
-                                    "rounded-2xl px-3 py-2 text-sm max-w-[90%] break-words",
-                                    isMe
-                                        ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                        : "bg-muted rounded-tl-sm"
-                                )}>
-                                    {msg.type === 'text' && <p>{msg.content}</p>}
-                                    {msg.type === 'image' && (
-                                        <img src={msg.content} alt="Upload" className="rounded-md max-w-full object-cover max-h-48" />
+                                <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                                    {!isGrouped && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-xs cursor-pointer hover:underline truncate">
+                                                {msg.authorName}
+                                            </span>
+                                        </div>
                                     )}
-                                    {msg.type === 'gif' && (
-                                        <img src={msg.content} alt="GIF" className="rounded-md max-w-full object-cover max-h-48" />
-                                    )}
+
+                                    <div className={cn("text-xs leading-5 text-foreground/90 whitespace-pre-wrap break-words flex justify-between items-end gap-2 group/msg")}>
+                                        <div className="flex-1">
+                                            {msg.type === 'text' ? (
+                                                msg.content
+                                            ) : msg.type === 'gif' ? (
+                                                <div className="mt-1">
+                                                    <img
+                                                        src={msg.content}
+                                                        alt="GIF"
+                                                        className="rounded-md max-w-[200px] max-h-[150px] object-cover"
+                                                        loading="lazy"
+                                                    />
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        {/* Timestamp on the right */}
+                                        <span className="text-[10px] text-muted-foreground/40 shrink-0 select-none opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                                            {timeString}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         )
@@ -228,73 +244,74 @@ export function GeneralChat() {
                 </div>
             </ScrollArea>
 
-            <div className="p-2 border-t bg-background/95">
-                <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1.5 border focus-within:ring-1 ring-ring transition-all">
+            {/* Scroll to bottom button */}
+            {showScrollButton && (
+                <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-16 right-4 h-8 w-8 rounded-full shadow-md z-10 opacity-90 hover:opacity-100 transition-opacity"
+                    onClick={scrollToBottom}
+                >
+                    <ChevronDown className="h-4 w-4" />
+                </Button>
+            )}
+
+            {/* Input Area */}
+            <div className="p-2 bg-background shrink-0 relative z-20">
+                <div className="bg-muted/50 rounded-md flex items-center p-1.5 px-3 gap-2 border">
                     <Popover open={giphyOpen} onOpenChange={setGiphyOpen}>
                         <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground">
-                                <Smile className="h-4 w-4" />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 rounded-sm text-muted-foreground hover:text-foreground p-0"
+                            >
+                                <span className="text-[10px] font-bold">GIF</span>
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2" align="start" side="top">
-                            <Input
-                                placeholder="Search GIPHY..."
-                                className="h-7 text-xs mb-2"
-                                value={gifSearch}
-                                onChange={(e) => {
-                                    setGifSearch(e.target.value)
-                                    searchGifs(e.target.value)
-                                }}
-                            />
-                            <div className="grid grid-cols-2 gap-1 max-h-48 overflow-y-auto">
-                                {loadingGifs ? (
-                                    <div className="col-span-2 flex justify-center py-4">
-                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                    </div>
-                                ) : (
-                                    gifs.map((gif) => (
-                                        <button
-                                            key={gif.id}
-                                            className="relative aspect-video rounded-sm overflow-hidden hover:opacity-80 transition-opacity"
-                                            onClick={() => sendMessage(gif.images.fixed_height.url, "gif")}
-                                        >
-                                            <img src={gif.images.fixed_preview.url} alt={gif.title} className="w-full h-full object-cover" />
-                                        </button>
-                                    ))
-                                )}
+                        <PopoverContent className="w-[280px] p-0 border bg-popover shadow-lg" align="start" side="top">
+                            <div className="p-2">
+                                <Input
+                                    placeholder="Search..."
+                                    className="h-7 text-xs mb-2"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    autoFocus
+                                />
+                                <div className="h-[250px] overflow-y-auto custom-scrollbar">
+                                    <Grid
+                                        width={260}
+                                        columns={2}
+                                        fetchGifs={fetchGifs}
+                                        key={searchTerm}
+                                        onGifClick={(gif, e) => {
+                                            e.preventDefault()
+                                            sendMessage(gif.images.fixed_height.url, "gif")
+                                        }}
+                                        noLink={true}
+                                        hideAttribution={true}
+                                    />
+                                </div>
                             </div>
                         </PopoverContent>
                     </Popover>
-
-                    <div className="relative">
-                        <input
-                            type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            accept="image/*"
-                            onChange={handleFileUpload}
-                            disabled={uploading}
-                        />
-                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground">
-                            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                        </Button>
-                    </div>
 
                     <Input
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message..."
-                        className="h-6 border-0 bg-transparent shadow-none focus-visible:ring-0 px-2 min-w-0"
+                        placeholder="Message..."
+                        className="h-auto p-0 border-0 bg-transparent shadow-none focus-visible:ring-0 text-foreground placeholder:text-muted-foreground text-xs min-h-[1.5rem]"
                     />
 
-                    <Button
-                        size="icon"
-                        className="h-6 w-6 shrink-0 rounded-full"
-                        onClick={() => sendMessage(inputValue)}
-                        disabled={!inputValue.trim()}
-                    >
-                        <Send className="h-3 w-3" />
-                    </Button>
+                    {inputValue.trim() && (
+                        <div
+                            className="cursor-pointer text-primary hover:text-primary/80 transition-colors"
+                            onClick={() => sendMessage(inputValue, "text")}
+                        >
+                            <Send className="w-4 h-4 ml-auto" />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
