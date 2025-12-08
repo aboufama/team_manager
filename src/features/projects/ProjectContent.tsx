@@ -126,50 +126,50 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
     return (
         <div className="flex flex-col h-full">
             <div className="shrink-0 border-b bg-background">
-                <div className="flex items-center justify-between p-3">
-                    <div className="flex items-center gap-3">
-                        <Button variant="ghost" size="icon" asChild className="h-7 w-7">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 p-3">
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <Button variant="ghost" size="icon" asChild className="h-7 w-7 shrink-0">
                             <Link href="/dashboard">
                                 <ArrowLeft className="w-4 h-4" />
                             </Link>
                         </Button>
-                        <h1 className="text-lg font-semibold">{project.name}</h1>
+                        <h1 className="text-base md:text-lg font-semibold truncate">{project.name}</h1>
                         {canManageSprints && view === 'kanban' && (
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 px-3"
+                                className="h-7 px-2 md:px-3 shrink-0"
                                 onClick={() => setShowSprintDialog(true)}
                             >
-                                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                                Add Sprint
+                                <Plus className="w-3.5 h-3.5 md:mr-1.5" />
+                                <span className="hidden md:inline">Add Sprint</span>
                             </Button>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 overflow-x-auto">
 
-                        <div className="flex items-center gap-1 border rounded-md">
+                        <div className="flex items-center gap-1 border rounded-md shrink-0">
                             <Button
                                 variant={view === 'kanban' ? 'default' : 'ghost'}
                                 size="sm"
-                                className="h-7 px-3"
+                                className="h-7 px-2 md:px-3"
                                 onClick={() => setView('kanban')}
                             >
-                                <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
-                                Kanban
+                                <LayoutGrid className="w-3.5 h-3.5 md:mr-1.5" />
+                                <span className="hidden md:inline">Kanban</span>
                             </Button>
                             <Button
                                 variant={view === 'gantt' ? 'default' : 'ghost'}
                                 size="sm"
-                                className="h-7 px-3"
+                                className="h-7 px-2 md:px-3"
                                 onClick={() => setView('gantt')}
                             >
-                                <Calendar className="w-3.5 h-3.5 mr-1.5" />
-                                Gantt
+                                <Calendar className="w-3.5 h-3.5 md:mr-1.5" />
+                                <span className="hidden md:inline">Gantt</span>
                             </Button>
                         </div>
                         {project.lead && (
-                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <div className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground shrink-0">
                                 <User className="h-3.5 w-3.5" />
                                 <span>Lead: {project.lead.name}</span>
                             </div>
