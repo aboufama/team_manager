@@ -256,7 +256,7 @@ export async function updateTaskDetails(taskId: string, input: Partial<CreateTas
         const task = await prisma.task.findUnique({
             where: { id: taskId },
             include: {
-                column: { include: { board: { include: { project: { select: { name: true } } } } } },
+                column: { include: { board: { include: { project: { select: { name: true, workspaceId: true } } } } } },
                 assignee: { select: { name: true } }
             }
         })
@@ -412,9 +412,16 @@ export async function updateTaskDetails(taskId: string, input: Partial<CreateTas
             })
 
             // Notify admins if there are changes
-            if (changes.length > 0) {
+            if (changes.length > 0 && task.column?.board?.project?.workspaceId) {
+                const workspaceId = task.column.board.project.workspaceId
                 const admins = await prisma.user.findMany({
-                    where: { role: { in: ['Admin', 'Team Lead'] } }
+                    where: {
+                        role: { in: ['Admin', 'Team Lead'] },
+                        OR: [
+                            { workspaceId },
+                            { memberships: { some: { workspaceId } } }
+                        ]
+                    }
                 })
 
                 const projectName = task.column?.board?.project?.name || 'Unknown Project'

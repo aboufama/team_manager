@@ -112,10 +112,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         }))
     } : null
 
-    const usersRaw = await prisma.user.findMany({
+    const usersRaw = project.workspaceId ? await prisma.user.findMany({
+        where: {
+            OR: [
+                { workspaceId: project.workspaceId },
+                { memberships: { some: { workspaceId: project.workspaceId } } }
+            ]
+        },
         orderBy: { name: 'asc' },
         select: { id: true, name: true, role: true }
-    })
+    }) : []
     const users = usersRaw.map(u => ({
         id: u.id,
         name: u.name || 'Unknown',
