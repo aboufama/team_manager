@@ -4,8 +4,9 @@ import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Plus, Users, Building2, Loader2, ArrowRight, FolderKanban, CheckCircle, Info, LogOut } from "lucide-react"
+import { Plus, Users, Building2, Loader2, ArrowRight, FolderKanban, CheckCircle, Info, LogOut, Pencil, Check, X } from "lucide-react"
 import { createWorkspace, joinWorkspace, switchWorkspace } from "@/app/actions/setup"
+import { updateDisplayName } from "@/app/actions/user-settings"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,6 +18,12 @@ export function WorkspaceSelector({ user }: { user: any }) {
     const [createOpen, setCreateOpen] = useState(false)
     const [joinOpen, setJoinOpen] = useState(false)
 
+    // Name editing state
+    const [isEditingName, setIsEditingName] = useState(false)
+    const [editedName, setEditedName] = useState(user.name || '')
+    const [nameError, setNameError] = useState<string | null>(null)
+    const [displayName, setDisplayName] = useState(user.name || '')
+
     // Custom notification state - now includes action to run after dismiss
     const [notification, setNotification] = useState<{
         title: string
@@ -24,6 +31,7 @@ export function WorkspaceSelector({ user }: { user: any }) {
         type: 'success' | 'info'
         onDismiss?: () => void
     } | null>(null)
+
 
     const handleNotificationDismiss = () => {
         const callback = notification?.onDismiss
@@ -81,6 +89,29 @@ export function WorkspaceSelector({ user }: { user: any }) {
         })
     }
 
+    const handleSaveName = async () => {
+        if (!editedName.trim()) {
+            setNameError("Name cannot be empty")
+            return
+        }
+        setNameError(null)
+        startTransition(async () => {
+            const res = await updateDisplayName(editedName.trim())
+            if (res.error) {
+                setNameError(res.error)
+            } else {
+                setDisplayName(editedName.trim())
+                setIsEditingName(false)
+            }
+        })
+    }
+
+    const handleCancelEdit = () => {
+        setEditedName(displayName)
+        setIsEditingName(false)
+        setNameError(null)
+    }
+
     return (
         <div className="w-full max-w-5xl space-y-6 md:space-y-8 animate-in fade-in zoom-in-95 duration-500 px-4 md:px-0">
             {/* Header */}
@@ -88,11 +119,56 @@ export function WorkspaceSelector({ user }: { user: any }) {
                 <div className="flex items-center gap-3 md:gap-4">
                     <Avatar className="h-12 w-12 md:h-16 md:w-16 border-2 border-white shadow-lg">
                         <AvatarImage src={user.avatar} />
-                        <AvatarFallback>{user.name?.[0]}</AvatarFallback>
+                        <AvatarFallback>{displayName?.[0]}</AvatarFallback>
                     </Avatar>
-                    <div className="space-y-0.5 md:space-y-1">
+                    <div className="space-y-0.5 md:space-y-1 flex-1">
                         <h2 className="text-xl md:text-3xl font-bold tracking-tight text-zinc-900">Your Workspaces</h2>
-                        <p className="text-sm md:text-base text-zinc-500 font-medium">Welcome back, {user.name}</p>
+                        {isEditingName ? (
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    value={editedName}
+                                    onChange={(e) => setEditedName(e.target.value)}
+                                    className="h-7 text-sm max-w-[200px]"
+                                    placeholder="Your display name"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveName()
+                                        if (e.key === 'Escape') handleCancelEdit()
+                                    }}
+                                />
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-green-600 hover:text-green-700"
+                                    onClick={handleSaveName}
+                                    disabled={isPending}
+                                >
+                                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-zinc-500 hover:text-zinc-700"
+                                    onClick={handleCancelEdit}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm md:text-base text-zinc-500 font-medium">Welcome back, {displayName}</p>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 text-zinc-400 hover:text-zinc-600"
+                                    onClick={() => setIsEditingName(true)}
+                                    title="Edit display name"
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        )}
+                        {nameError && <p className="text-xs text-red-500">{nameError}</p>}
                     </div>
                 </div>
 

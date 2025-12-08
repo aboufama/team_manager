@@ -204,16 +204,17 @@ model WorkspaceConfig {
 
 
 model Workspace {
-  id          String    @id @default(cuid())
-  name        String
-  inviteCode  String    @unique
-  ownerId     String
-  users       User[]
-  subteams    Subteam[]
-  members     WorkspaceMember[]
-  projects    Project[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  name             String
+  inviteCode       String    @unique
+  discordChannelId String?
+  ownerId          String
+  users            User[]
+  subteams         Subteam[]
+  members          WorkspaceMember[]
+  projects         Project[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model WorkspaceMember {

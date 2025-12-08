@@ -5,12 +5,30 @@ import { getCurrentUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { DeleteWorkspace } from "./DeleteWorkspace"
 import { CopyButton } from "./CopyButton"
+import { DiscordChannelSettings } from "./DiscordChannelSettings"
+import prisma from "@/lib/prisma"
 
 export default async function SettingsPage() {
     const user = await getCurrentUser()
     if (!user) {
         redirect('/')
     }
+
+    // Fetch workspace with Discord channel ID
+    let workspace = null
+    if (user.workspaceId) {
+        workspace = await prisma.workspace.findUnique({
+            where: { id: user.workspaceId },
+            select: {
+                id: true,
+                name: true,
+                inviteCode: true,
+                discordChannelId: true
+            }
+        })
+    }
+
+    const isAdmin = user.role === 'Admin'
 
     return (
         <div className="flex flex-col gap-6 md:gap-8 p-4 md:p-6 max-w-2xl">
@@ -25,6 +43,9 @@ export default async function SettingsPage() {
                     <div className="grid gap-2">
                         <Label>Name</Label>
                         <Input defaultValue={user.name} disabled />
+                        <p className="text-xs text-muted-foreground">
+                            You can change your display name in the Workspace Hub
+                        </p>
                     </div>
                     <div className="grid gap-2">
                         <Label>Role</Label>
@@ -33,22 +54,36 @@ export default async function SettingsPage() {
                 </CardContent>
             </Card>
 
-            {/* Invite Code - Simple Display */}
-            {user.workspace?.inviteCode && (
-                <div className="space-y-2">
-                    <h2 className="text-sm font-medium text-muted-foreground">Workspace Invite Code</h2>
-                    <div className="flex items-center gap-2">
-                        <code className="flex-1 px-4 py-3 bg-zinc-100 rounded-lg font-mono text-lg tracking-widest select-all">
-                            {user.workspace.inviteCode}
-                        </code>
-                        <CopyButton text={user.workspace.inviteCode} />
-                    </div>
-                </div>
+            {/* Workspace Settings */}
+            {workspace && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Workspace Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* Invite Code */}
+                        <div className="space-y-2">
+                            <Label className="text-sm">Invite Code</Label>
+                            <div className="flex items-center gap-2">
+                                <code className="flex-1 px-4 py-3 bg-zinc-100 rounded-lg font-mono text-lg tracking-widest select-all">
+                                    {workspace.inviteCode}
+                                </code>
+                                <CopyButton text={workspace.inviteCode} />
+                            </div>
+                        </div>
+
+                        {/* Discord Channel ID */}
+                        <DiscordChannelSettings
+                            initialChannelId={workspace.discordChannelId}
+                            isAdmin={isAdmin}
+                        />
+                    </CardContent>
+                </Card>
             )}
 
             {/* Danger Zone - Admin Only */}
-            {user.role === 'Admin' && user.workspaceId && user.workspace?.name && (
-                <DeleteWorkspace workspaceId={user.workspaceId} workspaceName={user.workspace.name} />
+            {isAdmin && user.workspaceId && workspace?.name && (
+                <DeleteWorkspace workspaceId={user.workspaceId} workspaceName={workspace.name} />
             )}
         </div>
     )
