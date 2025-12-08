@@ -39,7 +39,6 @@ model Project {
   id          String   @id @default(cuid())
   name        String
   description String?
-  difficulty  String   @default("Medium") // Easy, Medium, Hard
   lead        User?    @relation("ProjectLead", fields: [leadId], references: [id])
   leadId      String?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -109,7 +108,6 @@ model Task {
   subteam         Subteam? @relation(fields: [subteamId], references: [id], onDelete: SetNull)
   subteamId       String?
   priority        String   @default("Medium")
-  difficulty      String   @default("Medium") // Easy, Medium, Hard
   requireAttachment Boolean @default(true)
   instructionsFileUrl  String?  // Optional instructions file URL
   instructionsFileName String?  // Original filename

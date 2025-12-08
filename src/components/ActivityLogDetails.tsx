@@ -26,14 +26,14 @@ type ActivityLogDetailsProps = {
         task: {
             id: string
             title: string
-            column: { 
+            column: {
                 name: string
-                board: { 
-                    project: { 
+                board: {
+                    project: {
                         id: string
-                        name: string 
-                    } 
-                } 
+                        name: string
+                    }
+                }
             } | null
         } | null
     } | null
@@ -69,7 +69,6 @@ export function ActivityLogDetails({ open, onOpenChange, activity }: ActivityLog
         const labels: Record<string, string> = {
             'assignee': 'Assignee',
             'description': 'Description',
-            'difficulty': 'Difficulty',
             'startDate': 'Start Date',
             'endDate': 'Due Date',
             'status': 'Status'

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { RoleSelect } from "./RoleSelect"
 import { ProjectSelect } from "./ProjectSelect"
+import { MemberActions } from "./MemberActions"
 
 export const dynamic = 'force-dynamic'
 
@@ -128,11 +129,18 @@ export default async function MembersPage() {
                                                         <RoleSelect userId={user.id} currentRole={user.role} />
                                                     </TableCell>
                                                     <TableCell className="text-right">
-                                                        <ProjectSelect
-                                                            userId={user.id}
-                                                            currentProjectIds={assignedProjectIds}
-                                                            allProjects={allProjects}
-                                                        />
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            <ProjectSelect
+                                                                userId={user.id}
+                                                                currentProjectIds={assignedProjectIds}
+                                                                allProjects={allProjects}
+                                                            />
+                                                            <MemberActions
+                                                                userId={user.id}
+                                                                isCurrentUser={isCurrentUser}
+                                                                canRemove={canChangeRoles}
+                                                            />
+                                                        </div>
                                                     </TableCell>
                                                 </>
                                             )}

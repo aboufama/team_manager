@@ -32,7 +32,6 @@ export async function createProject(formData: FormData) {
                 data: {
                     name,
                     description: description || null,
-                    difficulty: (formData.get('difficulty') as string) || 'Medium',
                     leadId: leadId || null,
                 }
             })
@@ -77,7 +76,7 @@ export async function updateProjectLead(projectId: string, leadId: string | null
         if (!user) {
             return { error: 'Unauthorized' }
         }
-        
+
         // Only Admin can change project lead
         if (user.role !== 'Admin') {
             return { error: 'Unauthorized' }

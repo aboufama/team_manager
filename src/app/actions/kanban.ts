@@ -15,7 +15,6 @@ type CreateTaskInput = {
     description?: string
     assigneeId?: string
     assigneeIds?: string[]
-    difficulty?: string
     requireAttachment?: boolean
     sprintId?: string
 }
@@ -325,22 +324,6 @@ export async function updateTaskDetails(taskId: string, input: Partial<CreateTas
             })
         }
 
-        if (input.difficulty !== undefined && input.difficulty !== task.difficulty) {
-            changes.push({
-                field: 'Difficulty',
-                oldValue: task.difficulty || 'Medium',
-                newValue: input.difficulty || 'Medium'
-            })
-            activityLogs.push({
-                action: 'updated',
-                field: 'difficulty',
-                oldValue: task.difficulty || 'Medium',
-                newValue: input.difficulty || 'Medium',
-                changedBy: user.id,
-                changedByName: user.name || 'Unknown'
-            })
-        }
-
         if (input.startDate !== undefined) {
             const oldStartDate = task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : 'None'
             const newStartDate = input.startDate ? new Date(input.startDate).toISOString().split('T')[0] : 'None'
@@ -387,7 +370,6 @@ export async function updateTaskDetails(taskId: string, input: Partial<CreateTas
             data: {
                 description: input.description !== undefined ? (input.description || null) : undefined,
                 assigneeId: input.assigneeId !== undefined ? (input.assigneeId && input.assigneeId !== "" ? input.assigneeId : null) : undefined,
-                difficulty: input.difficulty !== undefined ? input.difficulty : undefined,
                 startDate: input.startDate !== undefined ? (input.startDate ? new Date(input.startDate) : null) : undefined,
                 endDate: input.endDate !== undefined ? (input.endDate ? new Date(input.endDate) : null) : undefined,
                 requireAttachment: input.requireAttachment !== undefined ? input.requireAttachment : undefined,

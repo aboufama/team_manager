@@ -109,7 +109,6 @@ export default async function DashboardPage() {
             return {
                 ...task,
                 reviewSince: reviewLog?.createdAt || null,
-                difficulty: task.difficulty // Preserve original type shape
             }
         }))
     }
@@ -297,7 +296,6 @@ export default async function DashboardPage() {
                                             id: task.id,
                                             title: task.title,
                                             description: task.description,
-                                            difficulty: task.difficulty,
                                             startDate: task.startDate,
                                             endDate: task.endDate,
                                             dueDate: task.dueDate,

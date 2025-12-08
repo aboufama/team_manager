@@ -12,7 +12,6 @@ type MyTaskCardProps = {
         id: string
         title: string
         description: string | null
-        difficulty: string | null
         startDate: Date | string | null
         endDate: Date | string | null
         dueDate: Date | string | null

@@ -114,9 +114,13 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
     const usersRaw = await prisma.user.findMany({
         orderBy: { name: 'asc' },
-        select: { id: true, name: true }
+        select: { id: true, name: true, role: true }
     })
-    const users = usersRaw.map(u => ({ id: u.id, name: u.name || 'Unknown' }))
+    const users = usersRaw.map(u => ({
+        id: u.id,
+        name: u.name || 'Unknown',
+        role: u.role || 'Member'
+    }))
 
     // Add computed fields to sprints and serialize dates
     const sprints = project.sprints.map(sprint => ({

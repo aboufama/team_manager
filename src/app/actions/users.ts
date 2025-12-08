@@ -84,3 +84,72 @@ export async function updateUserProjects(userId: string, projectIds: string[]) {
         return { error: 'Failed to update project assignments' }
     }
 }
+
+export async function removeUserFromWorkspace(userId: string) {
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+        return { error: 'Unauthorized: Only Admins can remove members' }
+    }
+
+    if (currentUser.role !== 'Admin') {
+        return { error: 'Unauthorized: Only Admins can remove members' }
+    }
+
+    // Check if user is removing themselves
+    if (currentUser.id === userId) {
+        // Count how many admins exist in the workspace
+        const adminCount = await prisma.user.count({
+            where: {
+                role: 'Admin',
+                workspaceId: currentUser.workspaceId
+            }
+        })
+
+        // If this is the only admin, prevent leaving/removal
+        if (adminCount <= 1) {
+            return {
+                error: 'Cannot leave workspace: You are the only admin. Please assign another admin first.',
+                requiresAdminAssignment: true
+            }
+        }
+    }
+
+    try {
+        // Remove from WorkspaceMember
+        if (currentUser.workspaceId) {
+            await prisma.workspaceMember.delete({
+                where: {
+                    userId_workspaceId: {
+                        userId: userId,
+                        workspaceId: currentUser.workspaceId
+                    }
+                }
+            })
+
+            // Also clear user's workspaceId and role if this Was their main workspace
+            // This logic depends on whether User.workspaceId is 'current active' or 'only'.
+            // Based on schema, User has workspaceId directly.
+            // If we remove them from workspace member list, we should probably set their active workspaceId to null?
+            // Or rely on them switching.
+            // Let's set it to null to be safe if it matches.
+
+            const targetUser = await prisma.user.findUnique({ where: { id: userId } })
+            if (targetUser?.workspaceId === currentUser.workspaceId) {
+                await prisma.user.update({
+                    where: { id: userId },
+                    data: {
+                        workspaceId: null,
+                        role: 'Member' // Reset role to Member default
+                    }
+                })
+            }
+        }
+
+        revalidatePath('/dashboard/members')
+        revalidatePath('/dashboard/projects')
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to remove user from workspace", error)
+        return { error: 'Failed to remove user from workspace' }
+    }
+}

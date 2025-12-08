@@ -12,7 +12,6 @@ type Project = {
     id: string
     name: string
     description: string | null
-    difficulty: string
     leadId: string | null
     lead: { id: string; name: string } | null
     _count: { sprints: number }
@@ -43,7 +42,6 @@ export function ProjectCard({ project, users, isAdmin }: Props) {
             <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-sm font-medium line-clamp-1">{project.name}</CardTitle>
-                    <Badge variant="outline" className="text-xs shrink-0">{project.difficulty}</Badge>
                 </div>
                 <CardDescription className="text-xs line-clamp-1">
                     {project.description || "No description"}
@@ -53,13 +51,13 @@ export function ProjectCard({ project, users, isAdmin }: Props) {
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{project._count.sprints} sprint{project._count.sprints !== 1 ? 's' : ''}</span>
                     {isAdmin ? (
-                        <div 
-                            className="relative z-10" 
+                        <div
+                            className="relative z-10"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <Select 
-                                value={leadId} 
-                                onValueChange={(v) => handleLeadChange(v, { preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent)}
+                            <Select
+                                value={leadId}
+                                onValueChange={(v) => handleLeadChange(v, { preventDefault: () => { }, stopPropagation: () => { } } as React.MouseEvent)}
                                 disabled={isPending}
                             >
                                 <SelectTrigger className="h-6 w-[100px] text-xs border-0 bg-transparent hover:bg-muted">
@@ -82,7 +80,7 @@ export function ProjectCard({ project, users, isAdmin }: Props) {
                     ) : null}
                 </div>
             </CardContent>
-            <Link 
+            <Link
                 href={`/dashboard/projects/${project.id}`}
                 className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
             >

@@ -70,9 +70,9 @@ async function main() {
 
     // Project Data
     const projectsData = [
-        { name: 'Drone', description: 'Autonomous drone development project', difficulty: 'Hard', lead: users[1] },
-        { name: 'Hexapod', description: 'Six-legged walking robot', difficulty: 'Medium', lead: users[4] },
-        { name: 'Design', description: 'General design assets and branding', difficulty: 'Easy', lead: users[2] },
+        { name: 'Drone', description: 'Autonomous drone development project', lead: users[1] },
+        { name: 'Hexapod', description: 'Six-legged walking robot', lead: users[4] },
+        { name: 'Design', description: 'General design assets and branding', lead: users[2] },
     ]
 
     for (const pData of projectsData) {
@@ -81,7 +81,6 @@ async function main() {
             data: {
                 name: pData.name,
                 description: pData.description,
-                difficulty: pData.difficulty,
                 leadId: pData.lead.id
             }
         })
