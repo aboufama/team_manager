@@ -141,9 +141,41 @@ export async function joinWorkspace(formData: FormData) {
     if (!code || code.trim().length === 0) return { error: "Invite code is required" }
 
     try {
-        const workspace = await prisma.workspace.findUnique({
-            where: { inviteCode: code.toUpperCase().trim() }
+        // 1. Try to find workspace by code (try exact match first, then uppercase)
+        let workspace = await prisma.workspace.findFirst({
+            where: {
+                OR: [
+                    { inviteCode: code.trim() },
+                    { inviteCode: code.toUpperCase().trim() }
+                ]
+            }
         })
+
+        // 2. If no workspace found, check if it's a platform invite code (e.g. cupi-team-join)
+        if (!workspace) {
+            const invite = await prisma.invite.findUnique({
+                where: { token: code.trim() }
+            })
+
+            if (invite) {
+                // Check if invite is valid
+                if ((invite.maxUses > 0 && invite.uses >= invite.maxUses) ||
+                    (invite.expiresAt && new Date() > invite.expiresAt)) {
+                    return { error: "This invite code has expired or reached maximum uses" }
+                }
+
+                // Increment usage
+                await prisma.invite.update({
+                    where: { id: invite.id },
+                    data: { uses: { increment: 1 } }
+                })
+
+                // Find a default workspace to join (e.g. the first one created)
+                workspace = await prisma.workspace.findFirst({
+                    orderBy: { createdAt: 'asc' }
+                })
+            }
+        }
 
         if (!workspace) {
             return { error: "Invalid invite code" }
