@@ -474,22 +474,29 @@ export function Sidebar() {
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[200px] p-0" align="start">
                                         <div className="max-h-[200px] overflow-y-auto p-1">
-                                            {allUsers.map(user => (
-                                                <div
-                                                    key={user.id}
-                                                    className="flex items-center space-x-2 px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
-                                                    onClick={() => toggleMember(user.id)}
-                                                >
-                                                    <Checkbox
-                                                        checked={selectedMemberIds.includes(user.id)}
-                                                        onCheckedChange={() => toggleMember(user.id)}
-                                                        id={`create-member-${user.id}`}
-                                                    />
-                                                    <label htmlFor={`create-member-${user.id}`} className="text-sm cursor-pointer flex-1">
-                                                        {user.name}
-                                                    </label>
-                                                </div>
-                                            ))}
+                                            {allUsers.map(user => {
+                                                const isLead = user.id === newProjectLeadId
+                                                return (
+                                                    <div
+                                                        key={user.id}
+                                                        className={cn(
+                                                            "flex items-center space-x-2 px-2 py-1.5 rounded-sm",
+                                                            isLead ? "opacity-50 pointer-events-none" : "hover:bg-accent cursor-pointer"
+                                                        )}
+                                                        onClick={() => !isLead && toggleMember(user.id)}
+                                                    >
+                                                        <Checkbox
+                                                            checked={isLead || selectedMemberIds.includes(user.id)}
+                                                            onCheckedChange={() => !isLead && toggleMember(user.id)}
+                                                            id={`create-member-${user.id}`}
+                                                            disabled={isLead}
+                                                        />
+                                                        <label htmlFor={`create-member-${user.id}`} className="text-sm cursor-pointer flex-1">
+                                                            {user.name} {isLead && <span className="text-xs text-muted-foreground ml-1">(Lead)</span>}
+                                                        </label>
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     </PopoverContent>
                                 </Popover>
@@ -563,22 +570,29 @@ export function Sidebar() {
                                     </PopoverTrigger>
                                     <PopoverContent className="w-[200px] p-0" align="start">
                                         <div className="max-h-[200px] overflow-y-auto p-1">
-                                            {allUsers.map(user => (
-                                                <div
-                                                    key={user.id}
-                                                    className="flex items-center space-x-2 px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
-                                                    onClick={() => toggleMember(user.id)}
-                                                >
-                                                    <Checkbox
-                                                        checked={selectedMemberIds.includes(user.id)}
-                                                        onCheckedChange={() => toggleMember(user.id)}
-                                                        id={`edit-member-${user.id}`}
-                                                    />
-                                                    <label htmlFor={`edit-member-${user.id}`} className="text-sm cursor-pointer flex-1">
-                                                        {user.name}
-                                                    </label>
-                                                </div>
-                                            ))}
+                                            {allUsers.map(user => {
+                                                const isLead = user.id === editLeadId
+                                                return (
+                                                    <div
+                                                        key={user.id}
+                                                        className={cn(
+                                                            "flex items-center space-x-2 px-2 py-1.5 rounded-sm",
+                                                            isLead ? "opacity-50 pointer-events-none" : "hover:bg-accent cursor-pointer"
+                                                        )}
+                                                        onClick={() => !isLead && toggleMember(user.id)}
+                                                    >
+                                                        <Checkbox
+                                                            checked={isLead || selectedMemberIds.includes(user.id)}
+                                                            onCheckedChange={() => !isLead && toggleMember(user.id)}
+                                                            id={`edit-member-${user.id}`}
+                                                            disabled={isLead}
+                                                        />
+                                                        <label htmlFor={`edit-member-${user.id}`} className="text-sm cursor-pointer flex-1">
+                                                            {user.name} {isLead && <span className="text-xs text-muted-foreground ml-1">(Lead)</span>}
+                                                        </label>
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     </PopoverContent>
                                 </Popover>
