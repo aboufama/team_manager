@@ -57,13 +57,28 @@ export default async function SettingsPage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {/* Invite Code */}
-                        <div className="space-y-2">
-                            <Label className="text-sm">Invite Code</Label>
-                            <div className="flex items-center gap-2">
-                                <code className="flex-1 px-4 py-3 bg-zinc-100 rounded-lg font-mono text-lg tracking-widest select-all">
-                                    {workspace.inviteCode}
-                                </code>
-                                <CopyButton text={workspace.inviteCode} />
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm">Invite Link</Label>
+                                <div className="flex items-center gap-2">
+                                    <code className="flex-1 px-3 py-2 bg-zinc-100 rounded-lg text-sm text-zinc-500 truncate select-all">
+                                        {`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/setup?invite=${workspace.inviteCode}`}
+                                    </code>
+                                    <CopyButton text={`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/setup?invite=${workspace.inviteCode}`} />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Share this link to let people join directly without entering a code.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm">Invite Code (Manual)</Label>
+                                <div className="flex items-center gap-2">
+                                    <code className="flex-1 px-4 py-3 bg-zinc-100 rounded-lg font-mono text-lg tracking-widest select-all">
+                                        {workspace.inviteCode}
+                                    </code>
+                                    <CopyButton text={workspace.inviteCode} />
+                                </div>
                             </div>
                         </div>
 

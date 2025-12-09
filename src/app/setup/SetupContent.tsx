@@ -1,15 +1,22 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Building2, Users, LogIn } from "lucide-react"
 import { initiateAuthFlow } from "@/app/actions/auth_flow"
+import { useSearchParams } from "next/navigation"
 
 export function SetupContent() {
-    const [mode, setMode] = useState<'select' | 'create' | 'join'>('select')
+    const searchParams = useSearchParams()
+    const inviteCode = searchParams.get('invite')
+
+    // Auto-select 'join' mode if invite code exists
+    const [mode, setMode] = useState<'select' | 'create' | 'join'>(inviteCode ? 'join' : 'select')
     const [isPending, startTransition] = useTransition()
+
+    // Pre-fill fields logic if needed
 
     async function handleCreate(formData: FormData) {
         startTransition(async () => {
@@ -89,6 +96,7 @@ export function SetupContent() {
                                     name={mode === 'create' ? 'name' : 'code'}
                                     placeholder={mode === 'create' ? "Workspace Name" : "Invite Code"}
                                     required
+                                    defaultValue={mode === 'join' ? (inviteCode || '') : ''}
                                     className="bg-white/50 border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900"
                                 />
                             </div>
