@@ -45,7 +45,7 @@ export function DiscordChannelSettings({ initialChannelId, isAdmin }: DiscordCha
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <Label className="text-sm">Discord Channel ID</Label>
+                <Label className="text-sm">Discord Webhook URL</Label>
                 {success && (
                     <span className="text-xs text-green-600 flex items-center gap-1">
                         <Check className="h-3 w-3" /> Saved
@@ -61,7 +61,7 @@ export function DiscordChannelSettings({ initialChannelId, isAdmin }: DiscordCha
                     <Input
                         value={channelId}
                         onChange={(e) => setChannelId(e.target.value)}
-                        placeholder="e.g. 1234567890123456789"
+                        placeholder="https://discord.com/api/webhooks/..."
                         className="flex-1 font-mono text-sm"
                         autoFocus
                         onKeyDown={(e) => {
@@ -88,15 +88,17 @@ export function DiscordChannelSettings({ initialChannelId, isAdmin }: DiscordCha
                     </Button>
                 </div>
             ) : (
-                <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-zinc-100 rounded text-sm font-mono">
-                        {savedChannelId || "Not set"}
-                    </code>
+                <div className="flex items-center gap-2 max-w-full">
+                    <div className="flex-1 bg-zinc-100 rounded px-3 py-2 min-w-0">
+                        <code className="block text-sm font-mono truncate">
+                            {savedChannelId || "Not set"}
+                        </code>
+                    </div>
                     {isAdmin && (
                         <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8"
+                            className="h-8 w-8 shrink-0"
                             onClick={() => setIsEditing(true)}
                         >
                             <Pencil className="h-4 w-4" />

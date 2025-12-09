@@ -11,6 +11,7 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
+  discordId String?  @unique
   avatar    String?
   role      String   @default("Member") // Admin, Team Lead, Member
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)

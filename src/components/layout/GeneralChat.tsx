@@ -2,11 +2,13 @@
 
 import * as React from "react"
 import { Send, Smile, Loader2, ChevronDown } from "lucide-react"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area" // Added ScrollBar import
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area" // Add this import
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 // GIPHY SDK
 import { GiphyFetch } from '@giphy/js-fetch-api'
@@ -24,23 +26,43 @@ type Message = {
     createdAt: string
 }
 
+type User = {
+    id: string
+    name: string
+    avatar: string | null
+}
+
 export function GeneralChat() {
+    const { toast } = useToast()
     const [messages, setMessages] = React.useState<Message[]>([])
     const [inputValue, setInputValue] = React.useState("")
     const [currentUser, setCurrentUser] = React.useState<{ id: string, name: string } | null>(null)
     const scrollRef = React.useRef<HTMLDivElement>(null)
     const [giphyOpen, setGiphyOpen] = React.useState(false)
     const [searchTerm, setSearchTerm] = React.useState("")
+    const [members, setMembers] = React.useState<User[]>([])
 
     // Scroll state
     const [showScrollButton, setShowScrollButton] = React.useState(false)
     const [isAtBottom, setIsAtBottom] = React.useState(true) // Track if user is at bottom
 
-    // Retrieve user identity
+    // Mention state
+    const [mentionQuery, setMentionQuery] = React.useState<string | null>(null)
+    const [mentionIndex, setMentionIndex] = React.useState<number>(-1)
+
+    // Retrieve user identity & members
     React.useEffect(() => {
         fetch('/api/auth/role')
             .then(res => res.json())
             .then(data => setCurrentUser(data))
+            .catch(console.error)
+
+        // Using leads endpoint for now as it returns users, ideally specific endpoint for all members
+        fetch('/api/users?role=leads')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setMembers(data)
+            })
             .catch(console.error)
     }, [])
 
@@ -54,8 +76,26 @@ export function GeneralChat() {
                         const lastNew = data[data.length - 1]
                         const lastPrev = prev[prev.length - 1]
 
+                        // Check for new messages to notify
+                        if (lastNew?.id !== lastPrev?.id && prev.length > 0) {
+                            // Identify new messages
+                            const newMsgs = data.filter((m: Message) => !prev.find(p => p.id === m.id))
+                            newMsgs.forEach((m: Message) => {
+                                if (m.authorId !== currentUser?.id) {
+                                    if (m.content.includes("@everyone") || (currentUser?.name && m.content.includes(`@${currentUser.name}`))) {
+                                        toast({
+                                            title: `New mention from ${m.authorName}`,
+                                            description: m.content,
+                                        })
+                                    }
+                                }
+                            })
+
+                            return data
+                        }
+
                         // Check if we need to update state
-                        if (lastNew?.id !== lastPrev?.id || data.length !== prev.length) {
+                        if (data.length !== prev.length) {
                             return data
                         }
                     }
@@ -65,7 +105,7 @@ export function GeneralChat() {
         } catch (error) {
             console.error(error)
         }
-    }, [])
+    }, [currentUser, toast])
 
     // Poll for messages
     React.useEffect(() => {
@@ -143,6 +183,8 @@ export function GeneralChat() {
         setInputValue("")
         setGiphyOpen(false)
         setIsAtBottom(true) // Force scroll on send
+        // Reset mentions
+        setMentionQuery(null)
 
         try {
             await fetch('/api/chat', {
@@ -157,10 +199,42 @@ export function GeneralChat() {
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (mentionQuery !== null && suggestions.length > 0) {
+            if (e.key === 'Tab' || e.key === 'Enter') {
+                e.preventDefault()
+                insertMention(suggestions[0].name)
+                return
+            }
+        }
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
             sendMessage(inputValue, "text")
         }
+    }
+
+    const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value
+        setInputValue(val)
+
+        // Simple mention detection: checks if last word starts with @
+        const lastWord = val.split(' ').pop()
+        if (lastWord && lastWord.startsWith('@')) {
+            setMentionQuery(lastWord.slice(1)) // Remove @
+            setMentionIndex(val.lastIndexOf('@'))
+        } else {
+            setMentionQuery(null)
+        }
+    }
+
+    const insertMention = (name: string) => {
+        if (mentionIndex === -1) return
+        const before = inputValue.substring(0, mentionIndex)
+        // const after = inputValue.substring(mentionIndex + (mentionQuery?.length || 0) + 1) // +1 for @
+        const newValue = `${before}@${name} `
+        setInputValue(newValue)
+        setMentionQuery(null)
+        // Focus input logic would go here ideally but simple binding works
     }
 
     // Check if we should group the message
@@ -179,84 +253,93 @@ export function GeneralChat() {
         return giphyFetch.trending({ offset, limit: 10 })
     }
 
+    // Member suggestions - Exclude everyone from dropdown
+    const filteredMembers = members.filter(m => m.name.toLowerCase().includes(mentionQuery?.toLowerCase() || ""))
+    const suggestions = mentionQuery !== null ? filteredMembers : []
+
     return (
         <div className="flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative">
             {/* Messages Area */}
-            {/* Added ScrollBar component to explicitly control sidebar placement to left */}
-            <ScrollArea ref={scrollRef} className="flex-1 bg-background px-1 h-0">
-                {/* Place scrollbar on the left by using direction: rtl on container then ltr on content, or typically just standard sidebar left. 
-                     However, native ScrollArea/scrollbar is typically right. To Move to left, we can use the `className` on ScrollBar component.
-                     BUT, the ScrollArea component in standard ui/library typically puts it on right. 
-                     A common trick is direction: rtl; but that messes up text. 
-                     Let's stick to standard behavior but ensure clean UI first, unless specifically forcing RTL layout.
-                     Wait, user asked "move scroll bar to the left side". 
-                     Standard UI pattern for sidebars sometimes has scroll on left? Or maybe they mean the sidebar IS on the left.
-                     Assuming they literally mean the scrollbar track itself.
-                     Let's try to override with CSS if possible or just use the primitive.
-                     Actually, standard ScrollArea component has the ScrollBar component.
-                  */}
-                <div className="flex flex-col justify-end min-h-full py-2">
-                    {messages.map((msg, i) => {
-                        const previousMsg = messages[i - 1]
-                        const isGrouped = shouldGroupMessage(msg, previousMsg)
-                        const timeString = new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+            <ScrollAreaPrimitive.Root className="flex-1 bg-background px-1 h-0 relative overflow-hidden">
+                <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overscroll-contain" ref={scrollRef as any}>
+                    <div className="flex flex-col justify-end min-h-full py-2 pl-3 pr-1">
+                        {messages.map((msg, i) => {
+                            const previousMsg = messages[i - 1]
+                            const isGrouped = shouldGroupMessage(msg, previousMsg)
+                            const timeString = new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+                            const isMentioned = currentUser && (msg.content.includes(`@${currentUser.name}`) || msg.content.includes("@everyone"))
 
-                        return (
-                            <div
-                                key={msg.id}
-                                className={cn(
-                                    "px-2 py-0.5 group flex items-start gap-2 relative",
-                                    !isGrouped && "mt-2"
-                                )}
-                            >
-                                {!isGrouped ? (
-                                    <Avatar className="w-8 h-8 shrink-0 mt-0.5 cursor-pointer">
-                                        <AvatarImage src={msg.authorAvatar || undefined} />
-                                        <AvatarFallback className="text-[10px]">
-                                            {msg.authorName[0]}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                ) : (
-                                    <div className="w-8 shrink-0" />
-                                )}
-
-                                <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                                    {!isGrouped && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-xs cursor-pointer hover:underline truncate">
-                                                {msg.authorName}
-                                            </span>
-                                        </div>
+                            return (
+                                <div
+                                    key={msg.id}
+                                    className={cn(
+                                        "px-2 py-0.5 group flex items-start gap-2 relative",
+                                        !isGrouped && "mt-2",
+                                        isMentioned && "bg-yellow-500/10 hover:bg-yellow-500/20"
+                                    )}
+                                >
+                                    {isMentioned && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-yellow-500" />}
+                                    {!isGrouped ? (
+                                        <Avatar className="w-8 h-8 shrink-0 mt-0.5 cursor-pointer">
+                                            <AvatarImage src={msg.authorAvatar || undefined} />
+                                            <AvatarFallback className="text-[10px]">
+                                                {msg.authorName[0]}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    ) : (
+                                        <div className="w-8 shrink-0" />
                                     )}
 
-                                    <div className={cn("text-xs leading-5 text-foreground/90 whitespace-pre-wrap break-words flex justify-between items-end gap-2 group/msg")}>
-                                        <div className="flex-1">
-                                            {msg.type === 'text' ? (
-                                                msg.content
-                                            ) : msg.type === 'gif' ? (
-                                                <div className="mt-1">
-                                                    <img
-                                                        src={msg.content}
-                                                        alt="GIF"
-                                                        className="rounded-md max-w-[200px] max-h-[150px] object-cover"
-                                                        loading="lazy"
-                                                    />
-                                                </div>
-                                            ) : null}
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                        {!isGrouped && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-xs cursor-pointer hover:underline truncate">
+                                                    {msg.authorName}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div className={cn("text-xs leading-5 text-foreground/80 whitespace-pre-wrap break-words flex justify-between items-end gap-2 group/msg")}>
+                                            <div className="flex-1 min-w-0">
+                                                {msg.type === 'text' ? (
+                                                    msg.content.split(/(@[\w\s]+)/g).map((part, idx) => {
+                                                        // Check if this part is a valid mention
+                                                        if (part.startsWith('@')) {
+                                                            const name = part.slice(1).trim()
+                                                            const isValidMember = members.some(m => m.name === name)
+                                                            const isEveryone = name === 'everyone'
+
+                                                            if (isValidMember || isEveryone) {
+                                                                return <span key={idx} className="bg-blue-500/20 text-blue-500 rounded px-0.5 font-medium">{part}</span>
+                                                            }
+                                                        }
+                                                        return part
+                                                    })
+                                                ) : msg.type === 'gif' ? (
+                                                    <div className="mt-1">
+                                                        <img
+                                                            src={msg.content}
+                                                            alt="GIF"
+                                                            className="rounded-md max-w-[200px] max-h-[150px] object-cover"
+                                                            loading="lazy"
+                                                        />
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                            {/* Timestamp on the right */}
+                                            <span className="text-[10px] text-muted-foreground/40 shrink-0 select-none opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                                                {timeString}
+                                            </span>
                                         </div>
-                                        {/* Timestamp on the right */}
-                                        <span className="text-[10px] text-muted-foreground/40 shrink-0 select-none opacity-0 group-hover/msg:opacity-100 transition-opacity">
-                                            {timeString}
-                                        </span>
                                     </div>
                                 </div>
-                            </div>
-                        )
-                    })}
-                </div>
-                {/* Override ScrollBar position to left */}
+                            )
+                        })}
+                    </div>
+                </ScrollAreaPrimitive.Viewport>
                 <ScrollBar className="left-0 right-auto border-r border-l-0" />
-            </ScrollArea>
+                <ScrollAreaPrimitive.Corner />
+            </ScrollAreaPrimitive.Root>
 
             {/* Scroll to bottom button */}
             {showScrollButton && (
@@ -272,13 +355,41 @@ export function GeneralChat() {
 
             {/* Input Area */}
             <div className="p-2 bg-background shrink-0 relative z-20">
-                <div className="bg-muted/50 rounded-md flex items-center p-1.5 px-3 gap-2 border">
+                {/* Mention Popover */}
+                {mentionQuery !== null && suggestions.length > 0 && (
+                    <div className="absolute bottom-full left-2 mb-2 w-64 bg-popover border rounded-md shadow-lg overflow-hidden flex flex-col max-h-48 z-50">
+                        <div className="text-[10px] text-muted-foreground p-2 uppercase font-semibold bg-muted/50">Members</div>
+                        <div className="overflow-y-auto">
+                            {suggestions.map((user, idx) => (
+                                <button
+                                    key={user.id}
+                                    className={cn(
+                                        "w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-muted transition-colors",
+                                        idx === 0 && "bg-muted/50" // Highlight first option as selected
+                                    )}
+                                    onClick={() => insertMention(user.name)}
+                                >
+                                    {user.avatar ? (
+                                        <img src={user.avatar} className="w-5 h-5 rounded-full" alt="" />
+                                    ) : (
+                                        <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] text-primary">
+                                            {user.name[0]}
+                                        </div>
+                                    )}
+                                    <span>{user.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="bg-muted/50 rounded-md flex items-center p-1.5 px-3 gap-2 border min-h-[2.5rem]">
                     <Popover open={giphyOpen} onOpenChange={setGiphyOpen}>
                         <PopoverTrigger asChild>
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 rounded-sm text-muted-foreground hover:text-foreground p-0"
+                                className="h-5 w-5 rounded-sm text-muted-foreground hover:text-foreground p-0 self-center"
                             >
                                 <span className="text-[10px] font-bold">GIF</span>
                             </Button>
@@ -310,17 +421,52 @@ export function GeneralChat() {
                         </PopoverContent>
                     </Popover>
 
-                    <Input
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Message..."
-                        className="h-auto p-0 border-0 bg-transparent shadow-none focus-visible:ring-0 text-foreground placeholder:text-muted-foreground text-xs min-h-[1.5rem]"
-                    />
+                    {/* Input Container with Highlight Overlay */}
+                    <div className="relative flex-1 min-w-0 grid py-0.5">
+                        {/* Backdrop (Highlighter) */}
+                        <div className="col-start-1 row-start-1 pointer-events-none whitespace-pre-wrap break-words text-xs px-0 font-sans leading-5 invisible">
+                            {/* Invisible copy to push height if using grid stack for auto-height, 
+                                 but easier to just let textarea handle scroll or use a specialized component. 
+                                 Let's use the transparent overlay method with absolute positioning 
+                                 if we want fixed height scroll, or grid stack for auto-grow. 
+                                 User previously had h-auto. Let's try grid stack auto-grow.
+                             */}
+                            {inputValue + ' '}
+                        </div>
+
+                        {/* Visible Highlighter (Absolute) */}
+                        <div className="col-start-1 row-start-1 pointer-events-none whitespace-pre-wrap break-words text-xs px-0 font-sans leading-5 text-foreground/80 z-0">
+                            {inputValue.split(/(@\w+)/g).map((part, idx) => {
+                                if (part.startsWith('@')) {
+                                    const name = part.slice(1)
+                                    const isValidMember = members.some(m => m.name === name)
+                                    const isEveryone = name === 'everyone'
+                                    if (isValidMember || isEveryone) {
+                                        return <span key={idx} className="bg-blue-500/20 text-blue-500 rounded-sm px-0.5 -mx-0.5">{part}</span>
+                                    }
+                                }
+                                return <span key={idx}>{part}</span>
+                            })}
+                        </div>
+
+                        {/* Actual Input (Transparent Text) */}
+                        <textarea
+                            value={inputValue}
+                            onChange={(e) => {
+                                handleInput(e as any)
+                                // Auto-grow handled by grid stack usually, but textarea needs overflow-hidden to not show scrollbar double
+                            }}
+                            onKeyDown={handleKeyDown}
+                            placeholder={inputValue ? "" : "Message..."}
+                            className="col-start-1 row-start-1 w-full h-full resize-none overflow-hidden bg-transparent border-0 p-0 px-0 text-xs font-sans leading-5 text-transparent caret-foreground focus:outline-none focus:ring-0 placeholder:text-muted-foreground/30 z-10"
+                            spellCheck={false}
+                            rows={1}
+                        />
+                    </div>
 
                     {inputValue.trim() && (
                         <div
-                            className="cursor-pointer text-primary hover:text-primary/80 transition-colors"
+                            className="cursor-pointer text-primary hover:text-primary/80 transition-colors self-center"
                             onClick={() => sendMessage(inputValue, "text")}
                         >
                             <Send className="w-4 h-4 ml-auto" />

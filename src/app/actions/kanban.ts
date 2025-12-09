@@ -85,7 +85,7 @@ export async function createTask(input: CreateTaskInput) {
         const task = await prisma.task.create({
             data: taskData,
             include: {
-                assignee: { select: { name: true } }
+                assignee: { select: { name: true, discordId: true } }
             }
         })
 
@@ -128,7 +128,7 @@ export async function createTask(input: CreateTaskInput) {
 
         // Send Discord notification
         if (project) {
-            notifyTaskCreated(task.title, project.name, task.assignee?.name)
+            notifyTaskCreated(task.title, project.name, task.assignee?.name, task.assignee?.discordId)
         }
 
         revalidatePath(`/dashboard/projects/${projectId}`)
@@ -197,7 +197,7 @@ export async function updateTaskStatus(taskId: string, columnId: string, project
             where: { id: taskId },
             data: { columnId },
             include: {
-                assignee: { select: { name: true } },
+                assignee: { select: { name: true, discordId: true } },
                 column: {
                     include: {
                         board: {
@@ -233,9 +233,9 @@ export async function updateTaskStatus(taskId: string, columnId: string, project
         const userName = user?.name || 'Someone'
 
         if (targetColumnName === 'Done') {
-            notifyTaskCompleted(updatedTask.title, projectName, userName)
+            notifyTaskCompleted(updatedTask.title, projectName, userName, user.discordId)
         } else if (targetColumnName === 'Review') {
-            notifyTaskSubmittedForReview(updatedTask.title, projectName, userName)
+            notifyTaskSubmittedForReview(updatedTask.title, projectName, userName, user.discordId)
         }
 
         return { success: true }

@@ -255,7 +255,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const [instructionsFile, setInstructionsFile] = useState<{ url: string; name: string } | null>(null)
     const [showInstructionsFullscreen, setShowInstructionsFullscreen] = useState(false)
-    const [taskDetailsExpanded, setTaskDetailsExpanded] = useState(false)
+    const [taskDetailsExpanded, setTaskDetailsExpanded] = useState(true)
     const commentsEndRef = useRef<HTMLDivElement>(null)
     const [uploadProgress, setUploadProgress] = useState<number | null>(null)
     const [uploadingFileName, setUploadingFileName] = useState<string | null>(null)
@@ -453,6 +453,10 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     }
 
     const uploadFile = async (file: File) => {
+        if (file.size > 100 * 1024 * 1024) {
+            setCommentError("File size exceeds 100MB limit.")
+            return
+        }
         setIsSubmitting(true)
         setCommentError(null)
         setUploadProgress(0)
@@ -701,394 +705,426 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-[95vw] md:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false}>
-                {/* Header */}
-                {/* Header */}
-                <DialogHeader className="px-3 py-2 border-b shrink-0">
-                    <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                                <DialogTitle className="text-sm font-semibold">{task.title}</DialogTitle>
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                {task.column?.name && <Badge variant="outline" className="text-[9px] h-4">{task.column.name}</Badge>}
-                                {isOverdue && <Badge variant="destructive" className="text-[9px] h-4">Overdue</Badge>}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                            <Button variant="ghost" size="icon" onClick={onEdit} className="shrink-0 h-6 w-6 border-0">
-                                <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="shrink-0 h-6 w-6 border-0">
-                                <X className="h-3 w-3" />
-                            </Button>
-                        </div>
-                    </div>
-                </DialogHeader>
-
-                {/* Main Content - Native Scrollable Div */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="p-3 space-y-3">
-                        {/* Compact Info Row */}
-                        <div className="flex items-center gap-2 text-[10px] flex-wrap bg-muted/50 rounded p-1.5">
-                            <span className="flex items-center gap-0.5">
-                                <User className="h-2.5 w-2.5 text-muted-foreground" />
-                                <span className="text-muted-foreground">
-                                    {task.assignees && task.assignees.length > 0
-                                        ? task.assignees.map(a => a?.user?.name || 'Unknown').join(', ')
-                                        : (task.assignee?.name || 'Unassigned')}
-                                </span>
-                            </span>
-                            <span className="text-muted-foreground/30">•</span>
-                            <span className="flex items-center gap-0.5" suppressHydrationWarning>
-                                <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-                                <span className="text-muted-foreground">{daysActive}d active</span>
-                            </span>
-                            <span className="text-muted-foreground/30">•</span>
-                            <span className="flex items-center gap-0.5" suppressHydrationWarning>
-                                <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
-                                <span className="text-muted-foreground">{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
-                            </span>
-                        </div>
-
-                        {/* Task Details - Collapsible section with description and instructions */}
-                        {(task.description || instructionsFile) && (
-                            <Collapsible open={taskDetailsExpanded} onOpenChange={setTaskDetailsExpanded}>
-                                <CollapsibleTrigger asChild>
-                                    <button className="flex items-center justify-between w-full py-2 px-2 -mx-2 rounded hover:bg-muted/50 transition-colors group">
-                                        <span className="text-xs font-semibold flex items-center gap-1.5">
-                                            <FileText className="h-3.5 w-3.5" />
-                                            Task Details
-                                        </span>
-                                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${taskDetailsExpanded ? 'rotate-180' : ''}`} />
-                                    </button>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="space-y-3">
-                                    {/* Description */}
-                                    {task.description && (
-                                        <div className="pt-1">
-                                            <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                                {task.description}
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {/* Instructions File */}
-                                    {instructionsFile && (
-                                        <div className="border rounded-lg bg-muted/30 p-2.5">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                                                    <FileText className="h-3 w-3" />
-                                                    Instructions File
-                                                </span>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        forceDownload(instructionsFile.url, instructionsFile.name)
-                                                    }}
-                                                    className="h-6 text-[10px] gap-1 px-2 inline-flex items-center hover:bg-muted rounded"
-                                                    title="Download"
-                                                >
-                                                    <Download className="h-2.5 w-2.5" />
-                                                    Download
-                                                </button>
-                                            </div>
-                                            <div
-                                                className="bg-background rounded border overflow-hidden cursor-pointer hover:ring-1 ring-primary/30 transition-all"
-                                                onClick={() => setShowInstructionsFullscreen(true)}
-                                            >
-                                                {isImageFile(instructionsFile.name) ? (
-                                                    <img
-                                                        src={instructionsFile.url}
-                                                        alt="Instructions"
-                                                        className="w-full max-h-32 object-contain"
-                                                    />
-                                                ) : isPdfFile(instructionsFile.name) ? (
-                                                    <div className="h-32 flex items-center justify-center">
-                                                        <iframe
-                                                            src={instructionsFile.url}
-                                                            className="w-full h-full pointer-events-none"
-                                                            title="Instructions PDF"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div className="p-3 text-center">
-                                                        <FileText className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-                                                        <p className="text-xs font-medium truncate">{instructionsFile.name}</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </CollapsibleContent>
-                            </Collapsible>
-                        )}
-
-                        {/* Files Section */}
-                        <div className="border-t pt-2">
-                            <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[10px] font-medium flex items-center gap-1">
-                                    <Paperclip className="h-2.5 w-2.5" />Files ({attachments.length})
-                                </span>
-                                {attachments.length > 0 && (
-                                    <button
-                                        onClick={downloadAllAttachments}
-                                        className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
-                                    >
-                                        <Download className="h-2.5 w-2.5" />
-                                        Download All
-                                    </button>
-                                )}
-                            </div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                className="hidden"
-                                onChange={handleFileUpload}
-                                disabled={isSubmitting}
-                            />
-                            {/* Upload Progress Bar */}
-                            {uploadProgress !== null && (
-                                <div className="mb-2 animate-in fade-in">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">
-                                            Uploading: {uploadingFileName}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground">{uploadProgress}%</span>
-                                    </div>
-                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-primary transition-all duration-200 ease-out"
-                                            style={{ width: `${uploadProgress}%` }}
-                                        />
-                                    </div>
+                <div
+                    className="flex flex-col h-full w-full relative"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
+                    {/* Header */}
+                    {/* Header */}
+                    <DialogHeader className="px-3 py-2 border-b shrink-0">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <DialogTitle className="text-sm font-semibold">{task.title}</DialogTitle>
                                 </div>
-                            )}
-                            {/* Unified Attachments List */}
-                            <div className="w-full overflow-x-auto overflow-y-hidden custom-scrollbar -mx-3 px-3">
-                                <div className="flex gap-2 pb-2 min-w-max">
-                                    {/* Render all attachments */}
-                                    {attachments.map(a => {
-                                        if (isImageFile(a.name)) {
-                                            return (
-                                                <div key={a.id} className="relative group bg-muted/50 rounded overflow-hidden border border-muted shrink-0 w-24 h-24 flex-shrink-0">
-                                                    <img
-                                                        src={a.url}
-                                                        alt={a.name}
-                                                        className="w-full h-full object-cover pointer-events-none select-none"
-                                                        loading="lazy"
-                                                    />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 z-20">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                setEnlargedImage({ url: a.url, name: a.name })
-                                                            }}
-                                                            className="p-1.5 bg-background/90 rounded hover:bg-background shadow-sm"
-                                                            title="Enlarge"
-                                                        >
-                                                            <Maximize2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                handleDeleteAttachment(a.id)
-                                                            }}
-                                                            className="p-1.5 bg-background/90 rounded hover:bg-destructive/20 shadow-sm"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                                                        </button>
-                                                    </div>
-                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-[7px] px-1 py-1 pointer-events-none">
-                                                        <div className="truncate font-medium">{a.name}</div>
-                                                    </div>
-                                                </div>
-                                            )
-                                        } else {
-                                            // PDF & Files
-                                            return (
-                                                <div key={a.id} className="relative group w-24 h-24 bg-muted/50 rounded border border-muted flex flex-col items-center justify-center text-center p-2 shrink-0">
-                                                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                forceDownload(a.url, a.name)
-                                                            }}
-                                                            className="p-1 bg-background/90 rounded hover:bg-background shadow-sm"
-                                                            title="Download"
-                                                        >
-                                                            <Download className="w-3 h-3" />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                handleDeleteAttachment(a.id)
-                                                            }}
-                                                            className="p-1 bg-background/90 rounded hover:bg-destructive/20 shadow-sm"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="w-3 h-3 text-destructive" />
-                                                        </button>
-                                                    </div>
-
-                                                    <a
-                                                        href={a.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex flex-col items-center justify-center w-full h-full gap-1 group-hover:opacity-50 transition-opacity"
-                                                    >
-                                                        <FileText className={`h-8 w-8 ${isPdfFile(a.name) ? 'text-red-400' : 'text-blue-400'}`} />
-                                                        <div className="w-full overflow-hidden">
-                                                            <p className="text-[9px] font-medium truncate w-full px-1">{a.name}</p>
-                                                            <p className="text-[8px] text-muted-foreground">{formatFileSize(a.size)}</p>
-                                                        </div>
-                                                    </a>
-                                                </div>
-                                            )
-                                        }
-                                    })}
-
-                                    {/* Upload Box */}
-                                    <div
-                                        onClick={handleClickUpload}
-                                        className="w-24 h-24 border-2 border-dashed rounded flex flex-col items-center justify-center cursor-pointer transition-colors border-muted bg-muted/30 hover:bg-muted/50 shrink-0"
-                                    >
-                                        <Upload className="h-4 w-4 text-muted-foreground" />
-                                        <p className="text-[8px] text-muted-foreground mt-0.5">Add</p>
-                                    </div>
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    {task.column?.name && <Badge variant="outline" className="text-[9px] h-4">{task.column.name}</Badge>}
+                                    {isOverdue && <Badge variant="destructive" className="text-[9px] h-4">Overdue</Badge>}
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Comments Section */}
-                        <div className="border-t pt-2 flex flex-col min-h-0">
-                            <div className="flex items-center justify-between mb-1.5 shrink-0">
-                                <span className="text-[10px] font-medium flex items-center gap-1">
-                                    Comments ({comments.length})
-                                </span>
-                                {isLoadingComments && (
-                                    <span className="text-[8px] text-muted-foreground">Loading...</span>
-                                )}
-                            </div>
-
-                            {commentError && (
-                                <div className="mb-2 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive shrink-0">
-                                    {commentError}
-                                </div>
-                            )}
-
-                            {/* Reply Preview */}
-                            {replyingTo && (
-                                <div className="flex items-center gap-1.5 bg-primary/10 rounded px-2 py-1 mb-1.5 border-l-2 border-primary shrink-0">
-                                    <Reply className="w-3 h-3 text-primary shrink-0" />
-                                    <span className="text-[9px] text-muted-foreground">Replying to</span>
-                                    <span className="text-[9px] text-primary font-medium">@{replyingTo.authorName || 'Unknown'}</span>
-                                    <span className="text-[9px] text-muted-foreground truncate flex-1 min-w-0">{replyingTo.content}</span>
-                                    <button
-                                        onClick={() => setReplyingTo(null)}
-                                        className="p-0.5 hover:bg-background rounded shrink-0"
-                                    >
-                                        <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* Add Comment */}
-                            <div className="flex gap-1.5 mb-2 shrink-0">
-                                <Textarea
-                                    ref={textareaRef}
-                                    placeholder={replyingTo ? `Reply to ${replyingTo.authorName || 'Unknown'}...` : "Write a comment..."}
-                                    value={newComment}
-                                    onChange={e => {
-                                        setNewComment(e.target.value)
-                                        setCommentError(null)
-                                    }}
-                                    className="text-[10px] min-h-[32px] max-h-[80px] resize-none flex-1 min-w-0"
-                                    disabled={isSubmitting}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault()
-                                            handleAddComment()
-                                        }
-                                        if (e.key === 'Escape' && replyingTo) {
-                                            setReplyingTo(null)
-                                        }
-                                    }}
-                                />
-                                <Button
-                                    size="sm"
-                                    onClick={handleAddComment}
-                                    disabled={!newComment.trim() || isSubmitting}
-                                    className="shrink-0 h-auto px-2"
-                                >
-                                    <Send className={`h-3 w-3 ${isSubmitting ? 'opacity-50' : ''}`} />
+                            <div className="flex items-center gap-1 shrink-0">
+                                <Button variant="ghost" size="icon" onClick={onEdit} className="shrink-0 h-6 w-6 border-0">
+                                    <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="shrink-0 h-6 w-6 border-0">
+                                    <X className="h-3 w-3" />
                                 </Button>
                             </div>
+                        </div>
+                    </DialogHeader>
 
-                            {/* Comments List - Scrollable */}
-                            {comments.length > 0 ? (
-                                <div className="flex-1 min-h-0 max-h-[400px]">
-                                    <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
-                                        <div className="pb-4">
-                                            {(() => {
-                                                try {
-                                                    const tree = buildCommentTree(comments)
-                                                    return tree.map(comment => (
-                                                        <CommentNode
-                                                            key={comment.id}
-                                                            comment={comment}
-                                                            userRole={userRole}
-                                                            currentUserId={currentUser?.id}
-                                                            onReply={(c) => {
-                                                                setReplyingTo(c)
-                                                                textareaRef.current?.focus()
-                                                            }}
-                                                            onDelete={handleDeleteComment}
+                    {/* Main Content - Native Scrollable Div */}
+                    <div className="flex-1 min-h-0 overflow-y-auto">
+                        <div className="p-3 space-y-3">
+                            {/* Compact Info Row */}
+                            <div className="flex items-center gap-2 text-[10px] flex-wrap bg-muted/50 rounded p-1.5">
+                                <span className="flex items-center gap-0.5" suppressHydrationWarning>
+                                    <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <span className="text-muted-foreground">{daysActive}d active</span>
+                                </span>
+                                <span className="text-muted-foreground/30">•</span>
+                                <span className="flex items-center gap-0.5" suppressHydrationWarning>
+                                    <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <span className="text-muted-foreground">{formatDate(task.startDate)} → {formatDate(task.endDate)}</span>
+                                </span>
+                                <span className="text-muted-foreground/30">•</span>
+                                <span className="flex items-center gap-0.5">
+                                    <User className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <span className="text-muted-foreground">
+                                        Assigned to: {task.assignees && task.assignees.length > 0
+                                            ? task.assignees.map(a => a?.user?.name || 'Unknown').join(', ')
+                                            : (task.assignee?.name || 'Unassigned')}
+                                    </span>
+                                </span>
+                            </div>
+
+                            {/* Task Details - Collapsible section with description and instructions */}
+                            {(task.description || instructionsFile) && (
+                                <Collapsible open={taskDetailsExpanded} onOpenChange={setTaskDetailsExpanded}>
+                                    <CollapsibleTrigger asChild>
+                                        <button className="flex items-center justify-between w-full py-2 px-2 -mx-2 rounded hover:bg-muted/50 transition-colors group">
+                                            <span className="text-xs font-semibold flex items-center gap-1.5">
+                                                <FileText className="h-3.5 w-3.5" />
+                                                Task Details
+                                            </span>
+                                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${taskDetailsExpanded ? 'rotate-180' : ''}`} />
+                                        </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="space-y-3">
+                                        {/* Description */}
+                                        {task.description && (
+                                            <div className="pt-1">
+                                                <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                                    {task.description.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+                                                        if (part.match(/^https?:\/\//)) {
+                                                            return (
+                                                                <a
+                                                                    key={i}
+                                                                    href={part}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-primary hover:underline break-all"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    {part}
+                                                                </a>
+                                                            )
+                                                        }
+                                                        return <span key={i}>{part}</span>
+                                                    })}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Instructions File */}
+                                        {instructionsFile && (
+                                            <div className="border rounded-lg bg-muted/30 p-2.5">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                                                        <FileText className="h-3 w-3" />
+                                                        Instructions File
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            forceDownload(instructionsFile.url, instructionsFile.name)
+                                                        }}
+                                                        className="h-6 text-[10px] gap-1 px-2 inline-flex items-center hover:bg-muted rounded"
+                                                        title="Download"
+                                                    >
+                                                        <Download className="h-2.5 w-2.5" />
+                                                        Download
+                                                    </button>
+                                                </div>
+                                                <div
+                                                    className="bg-background rounded border overflow-hidden cursor-pointer hover:ring-1 ring-primary/30 transition-all"
+                                                    onClick={() => setShowInstructionsFullscreen(true)}
+                                                >
+                                                    {isImageFile(instructionsFile.name) ? (
+                                                        <img
+                                                            src={instructionsFile.url}
+                                                            alt="Instructions"
+                                                            className="w-full max-h-32 object-contain"
                                                         />
-                                                    ))
-                                                } catch (e) {
-                                                    console.error("Error building comment tree:", e)
-                                                    return <div className="text-destructive text-[10px]">Error loading comments.</div>
-                                                }
-                                            })()}
-                                            <div ref={commentsEndRef} />
+                                                    ) : isPdfFile(instructionsFile.name) ? (
+                                                        <div className="h-32 flex items-center justify-center">
+                                                            <iframe
+                                                                src={instructionsFile.url}
+                                                                className="w-full h-full pointer-events-none"
+                                                                title="Instructions PDF"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-3 text-center">
+                                                            <FileText className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+                                                            <p className="text-xs font-medium truncate">{instructionsFile.name}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            )}
+
+                            {/* Files Section */}
+                            <div className="border-t pt-2">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-[10px] font-medium flex items-center gap-1">
+                                        <Paperclip className="h-2.5 w-2.5" />Files ({attachments.length})
+                                    </span>
+                                    {attachments.length > 0 && (
+                                        <button
+                                            onClick={downloadAllAttachments}
+                                            className="text-[9px] text-muted-foreground hover:text-foreground flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted transition-colors"
+                                        >
+                                            <Download className="h-2.5 w-2.5" />
+                                            Download All
+                                        </button>
+                                    )}
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    onChange={handleFileUpload}
+                                    disabled={isSubmitting}
+                                />
+                                {/* Upload Progress Bar */}
+                                {uploadProgress !== null && (
+                                    <div className="mb-2 animate-in fade-in">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">
+                                                Uploading: {uploadingFileName}
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground">{uploadProgress}%</span>
+                                        </div>
+                                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-primary transition-all duration-200 ease-out"
+                                                style={{ width: `${uploadProgress}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {/* Unified Attachments List */}
+                                <div className="w-full overflow-x-auto overflow-y-hidden custom-scrollbar -mx-3 px-3">
+                                    <div className="flex gap-2 pb-2 min-w-max">
+                                        {/* Render all attachments */}
+                                        {attachments.map(a => {
+                                            if (isImageFile(a.name)) {
+                                                return (
+                                                    <div key={a.id} className="relative group bg-muted/50 rounded overflow-hidden border border-muted shrink-0 w-24 h-24 flex-shrink-0">
+                                                        <img
+                                                            src={a.url}
+                                                            alt={a.name}
+                                                            className="w-full h-full object-cover pointer-events-none select-none"
+                                                            loading="lazy"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 z-20">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    setEnlargedImage({ url: a.url, name: a.name })
+                                                                }}
+                                                                className="p-1.5 bg-background/90 rounded hover:bg-background shadow-sm"
+                                                                title="Enlarge"
+                                                            >
+                                                                <Maximize2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleDeleteAttachment(a.id)
+                                                                }}
+                                                                className="p-1.5 bg-background/90 rounded hover:bg-destructive/20 shadow-sm"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                                            </button>
+                                                        </div>
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-[7px] px-1 py-1 pointer-events-none">
+                                                            <div className="truncate font-medium">{a.name}</div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            } else {
+                                                // PDF & Files
+                                                return (
+                                                    <div key={a.id} className="relative group w-24 h-24 bg-muted/50 rounded border border-muted flex flex-col items-center justify-center text-center p-2 shrink-0">
+                                                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    forceDownload(a.url, a.name)
+                                                                }}
+                                                                className="p-1 bg-background/90 rounded hover:bg-background shadow-sm"
+                                                                title="Download"
+                                                            >
+                                                                <Download className="w-3 h-3" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleDeleteAttachment(a.id)
+                                                                }}
+                                                                className="p-1 bg-background/90 rounded hover:bg-destructive/20 shadow-sm"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="w-3 h-3 text-destructive" />
+                                                            </button>
+                                                        </div>
+
+                                                        <a
+                                                            href={a.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex flex-col items-center justify-center w-full h-full gap-1 group-hover:opacity-50 transition-opacity"
+                                                        >
+                                                            <FileText className={`h-8 w-8 ${isPdfFile(a.name) ? 'text-red-400' : 'text-blue-400'}`} />
+                                                            <div className="w-full overflow-hidden">
+                                                                <p className="text-[9px] font-medium truncate w-full px-1">{a.name}</p>
+                                                                <p className="text-[8px] text-muted-foreground">{formatFileSize(a.size)}</p>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+                                                )
+                                            }
+                                        })}
+
+                                        {/* Upload Box */}
+                                        <div
+                                            onClick={handleClickUpload}
+                                            className="w-24 h-24 border-2 border-dashed rounded flex flex-col items-center justify-center cursor-pointer transition-colors border-muted bg-muted/30 hover:bg-muted/50 shrink-0"
+                                        >
+                                            <Upload className="h-4 w-4 text-muted-foreground" />
+                                            <p className="text-[8px] text-muted-foreground mt-0.5">Add</p>
                                         </div>
                                     </div>
                                 </div>
-                            ) : !isLoadingComments && (
-                                <div className="text-[9px] text-muted-foreground italic py-4 text-center shrink-0">
-                                    No comments yet. Be the first to comment!
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                            </div>
 
-                {/* Review Action Buttons */}
-                {showReviewButtons && (
-                    <div className="border-t px-3 py-3 shrink-0 bg-muted/30">
-                        <div className="flex items-center gap-2">
-                            <Button
-                                onClick={handleAccept}
-                                disabled={isProcessingReview}
-                                size="sm"
-                                className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                            >
-                                <CheckCircle className="h-4 w-4 mr-1.5" />
-                                Accept
-                            </Button>
-                            <Button
-                                onClick={handleDeny}
-                                disabled={isProcessingReview}
-                                size="sm"
-                                className="flex-1 h-8 text-xs bg-red-600 hover:bg-red-700 text-white"
-                            >
-                                <XCircle className="h-4 w-4 mr-1.5" />
-                                Deny
-                            </Button>
+                            {/* Comments Section */}
+                            <div className="border-t pt-2 flex flex-col min-h-0">
+                                <div className="flex items-center justify-between mb-1.5 shrink-0">
+                                    <span className="text-[10px] font-medium flex items-center gap-1">
+                                        Comments ({comments.length})
+                                    </span>
+                                    {isLoadingComments && (
+                                        <span className="text-[8px] text-muted-foreground">Loading...</span>
+                                    )}
+                                </div>
+
+                                {commentError && (
+                                    <div className="mb-2 p-1.5 bg-destructive/10 border border-destructive/20 rounded text-[9px] text-destructive shrink-0">
+                                        {commentError}
+                                    </div>
+                                )}
+
+                                {/* Reply Preview */}
+                                {replyingTo && (
+                                    <div className="flex items-center gap-1.5 bg-primary/10 rounded px-2 py-1 mb-1.5 border-l-2 border-primary shrink-0">
+                                        <Reply className="w-3 h-3 text-primary shrink-0" />
+                                        <span className="text-[9px] text-muted-foreground">Replying to</span>
+                                        <span className="text-[9px] text-primary font-medium">@{replyingTo.authorName || 'Unknown'}</span>
+                                        <span className="text-[9px] text-muted-foreground truncate flex-1 min-w-0">{replyingTo.content}</span>
+                                        <button
+                                            onClick={() => setReplyingTo(null)}
+                                            className="p-0.5 hover:bg-background rounded shrink-0"
+                                        >
+                                            <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Add Comment */}
+                                <div className="flex gap-1.5 mb-2 shrink-0">
+                                    <Textarea
+                                        ref={textareaRef}
+                                        placeholder={replyingTo ? `Reply to ${replyingTo.authorName || 'Unknown'}...` : "Write a comment..."}
+                                        value={newComment}
+                                        onChange={e => {
+                                            setNewComment(e.target.value)
+                                            setCommentError(null)
+                                        }}
+                                        className="text-[10px] min-h-[32px] max-h-[80px] resize-none flex-1 min-w-0"
+                                        disabled={isSubmitting}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault()
+                                                handleAddComment()
+                                            }
+                                            if (e.key === 'Escape' && replyingTo) {
+                                                setReplyingTo(null)
+                                            }
+                                        }}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        onClick={handleAddComment}
+                                        disabled={!newComment.trim() || isSubmitting}
+                                        className="shrink-0 h-auto px-2"
+                                    >
+                                        <Send className={`h-3 w-3 ${isSubmitting ? 'opacity-50' : ''}`} />
+                                    </Button>
+                                </div>
+
+                                {/* Comments List - Scrollable */}
+                                {comments.length > 0 ? (
+                                    <div className="flex-1 min-h-0 max-h-[400px]">
+                                        <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
+                                            <div className="pb-4">
+                                                {(() => {
+                                                    try {
+                                                        const tree = buildCommentTree(comments)
+                                                        return tree.map(comment => (
+                                                            <CommentNode
+                                                                key={comment.id}
+                                                                comment={comment}
+                                                                userRole={userRole}
+                                                                currentUserId={currentUser?.id}
+                                                                onReply={(c) => {
+                                                                    setReplyingTo(c)
+                                                                    textareaRef.current?.focus()
+                                                                }}
+                                                                onDelete={handleDeleteComment}
+                                                            />
+                                                        ))
+                                                    } catch (e) {
+                                                        console.error("Error building comment tree:", e)
+                                                        return <div className="text-destructive text-[10px]">Error loading comments.</div>
+                                                    }
+                                                })()}
+                                                <div ref={commentsEndRef} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : !isLoadingComments && (
+                                    <div className="text-[9px] text-muted-foreground italic py-4 text-center shrink-0">
+                                        No comments yet. Be the first to comment!
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                )}
+
+                    {/* Review Action Buttons */}
+                    {showReviewButtons && (
+                        <div className="border-t px-3 py-3 shrink-0 bg-muted/30">
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={handleAccept}
+                                    disabled={isProcessingReview}
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-1.5" />
+                                    Accept
+                                </Button>
+                                <Button
+                                    onClick={handleDeny}
+                                    disabled={isProcessingReview}
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                    <XCircle className="h-4 w-4 mr-1.5" />
+                                    Deny
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {isDragging && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center border-2 border-dashed border-primary m-4 rounded-lg pointer-events-none">
+                            <div className="text-center">
+                                <Upload className="h-10 w-10 text-primary mx-auto mb-2" />
+                                <p className="text-sm font-medium">Drop files to upload</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </DialogContent>
 
             {/* Image Enlargement Modal */}

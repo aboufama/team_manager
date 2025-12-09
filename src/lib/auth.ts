@@ -40,7 +40,8 @@ export async function getCurrentUser() {
                     workspaceId: dbUser.workspaceId,
                     workspaceName: dbUser.workspace?.name,
                     workspace: dbUser.workspace,
-                    memberships: dbUser.memberships
+                    memberships: dbUser.memberships,
+                    discordId: dbUser.discordId
                 }
             }
         }

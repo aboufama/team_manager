@@ -55,6 +55,62 @@ export async function POST(request: Request) {
             }
         })
 
+        // -- Discord Integration Start --
+        try {
+            // Import dynamically to avoid circular deps if any (though static import is fine usually)
+            const { sendDiscordNotification } = await import('@/lib/discord')
+
+            // 1. Fetch workspace members to resolve mentions
+            const workspaceMembers = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { workspaceId: user.workspaceId },
+                        { memberships: { some: { workspaceId: user.workspaceId } } }
+                    ],
+                    discordId: { not: null }
+                },
+                select: { name: true, discordId: true }
+            })
+
+            // 2. Resolve mentions
+            let discordContent = content
+            let hasMentions = false
+
+            // Sort by name length desc to avoid partial matches (e.g. matching "Rob" inside "Robert")
+            const sortedMembers = workspaceMembers.sort((a, b) => b.name.length - a.name.length)
+
+            for (const member of sortedMembers) {
+                if (!member.discordId) continue
+
+                const mentionString = `@${member.name}`
+                if (discordContent.includes(mentionString)) {
+                    // Replace all occurrences
+                    // Note: String.replaceAll is standard in Node 15+
+                    discordContent = discordContent.split(mentionString).join(`<@${member.discordId}>`)
+                    hasMentions = true
+                }
+            }
+
+            // Handle @everyone
+            if (discordContent.includes('@everyone')) {
+                // Discord webhook allows @everyone if configured, usually passes through
+                hasMentions = true
+            }
+
+            // 3. Send to Discord
+            // We prepend the author name
+            const finalMessage = `**[Chat] ${user.name || 'User'}:** ${discordContent}`
+
+            // Send if it has mentions OR if we want to forward all chat messages (User asked for "pings in user ping that user... and all events")
+            // Assuming we forward all messages but pings work
+            await sendDiscordNotification(finalMessage)
+
+        } catch (discordErr) {
+            console.error('Failed to send Discord notification for chat:', discordErr)
+            // Don't fail the request if Discord fails
+        }
+        // -- Discord Integration End --
+
         return NextResponse.json(message)
     } catch (error) {
         console.error('Failed to send message:', error)

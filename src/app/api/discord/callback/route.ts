@@ -92,6 +92,7 @@ export async function GET(request: Request) {
                     email: discordUser.email || `discord_${discordUser.id}@discord.user`,
                     name: discordUser.global_name || discordUser.username,
                     avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
+                    discordId: discordUser.id,
                     role: 'Member', // Default role
                 },
                 include: { workspace: true }
@@ -102,6 +103,7 @@ export async function GET(request: Request) {
                 where: { id: user.id },
                 data: {
                     avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
+                    discordId: discordUser.id, // Update discordId just in case
                 }
             })
         }

@@ -19,12 +19,12 @@ export async function sendDiscordNotification(content: string, embeds?: DiscordE
                 embeds,
             }),
         })
-        
+
         if (!response.ok) {
             console.error('Failed to send Discord notification:', await response.text())
             return false
         }
-        
+
         return true
     } catch (error) {
         console.error('Discord webhook error:', error)
@@ -33,8 +33,9 @@ export async function sendDiscordNotification(content: string, embeds?: DiscordE
 }
 
 // Helper functions for common notifications
-export async function notifyTaskCreated(taskTitle: string, projectName: string, assigneeName?: string) {
-    return sendDiscordNotification('', [{
+export async function notifyTaskCreated(taskTitle: string, projectName: string, assigneeName?: string, assigneeDiscordId?: string | null) {
+    const content = assigneeDiscordId ? `<@${assigneeDiscordId}>` : ''
+    return sendDiscordNotification(content, [{
         title: '📋 New Task Created',
         description: `**${taskTitle}**`,
         color: 0x5865F2, // Discord blue
@@ -46,8 +47,10 @@ export async function notifyTaskCreated(taskTitle: string, projectName: string, 
     }])
 }
 
-export async function notifyTaskCompleted(taskTitle: string, projectName: string, completedBy: string) {
-    return sendDiscordNotification('', [{
+export async function notifyTaskCompleted(taskTitle: string, projectName: string, completedBy: string, completedByDiscordId?: string | null) {
+    // Only ping if we want (maybe not for completion? User said "all events... ping the right person")
+    const content = completedByDiscordId ? `<@${completedByDiscordId}>` : ''
+    return sendDiscordNotification(content, [{
         title: '✅ Task Completed',
         description: `**${taskTitle}**`,
         color: 0x57F287, // Green
@@ -59,8 +62,9 @@ export async function notifyTaskCompleted(taskTitle: string, projectName: string
     }])
 }
 
-export async function notifyTaskSubmittedForReview(taskTitle: string, projectName: string, submittedBy: string) {
-    return sendDiscordNotification('', [{
+export async function notifyTaskSubmittedForReview(taskTitle: string, projectName: string, submittedBy: string, submittedByDiscordId?: string | null) {
+    const content = submittedByDiscordId ? `<@${submittedByDiscordId}>` : ''
+    return sendDiscordNotification(content, [{
         title: '🔍 Task Submitted for Review',
         description: `**${taskTitle}**`,
         color: 0xFEE75C, // Yellow
@@ -99,7 +103,7 @@ export async function notifyTaskUpdated(taskTitle: string, projectName: string, 
         value: `**Before:** ${change.oldValue || 'None'}\n**After:** ${change.newValue || 'None'}`,
         inline: false
     }))
-    
+
     return sendDiscordNotification('', [{
         title: '📝 Task Updated',
         description: `**${taskTitle}**`,
