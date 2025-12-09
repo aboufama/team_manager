@@ -4,7 +4,13 @@ import { WorkspaceSelector } from "./WorkspaceSelector"
 
 export default async function WorkspacesPage() {
     const user = await getCurrentUser()
-    if (!user) redirect("/")
+    if (!user) {
+        redirect("/")
+    }
+
+    if (user.id === 'pending') {
+        redirect("/onboarding")
+    }
 
     return (
         <div className="relative min-h-screen bg-white flex flex-col items-center justify-center p-4 overflow-hidden">

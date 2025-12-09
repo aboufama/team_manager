@@ -74,63 +74,75 @@ export async function GET(request: Request) {
             path: '/',
         })
 
-        // Check if user exists in database
-        let user = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { discordId: discordUser.id },
-                    { email: discordUser.email || `discord_${discordUser.id}@discord.user` },
-                    { email: `discord_${discordUser.id}@discord.user` }
-                ]
-            },
+        // STRATEGY: Find existing user by Discord ID first, then Email.
+        let user = await prisma.user.findUnique({
+            where: { discordId: discordUser.id },
             include: { workspace: true }
         })
 
         if (!user) {
-            // Create new user immediately
-            user = await prisma.user.create({
-                data: {
-                    email: discordUser.email || `discord_${discordUser.id}@discord.user`,
-                    name: discordUser.global_name || discordUser.username,
-                    avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
-                    discordId: discordUser.id,
-                    role: 'Member', // Default role
-                    hasOnboarded: false, // Explicitly false for NEW users
+            // Fallback: Check by email if Discord ID lookup failed (legacy users)
+            const email = discordUser.email || `discord_${discordUser.id}@discord.user`
+            user = await prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { email: email },
+                        { email: `discord_${discordUser.id}@discord.user` }
+                    ]
                 },
                 include: { workspace: true }
             })
+        }
 
-            // Store the database user ID
-            cookieStore.set('user_id', user.id, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                maxAge: 60 * 60 * 24 * 7,
-                path: '/',
-            })
-
-            return NextResponse.redirect(new URL('/onboarding', request.url))
-
-        } else {
-            // Existing user found
+        if (user) {
+            // EXISTING USER: Login & Skip Onboarding
             await prisma.user.update({
                 where: { id: user.id },
                 data: {
+                    name: discordUser.global_name || discordUser.username,
                     avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
                     discordId: discordUser.id,
-                    hasOnboarded: true // Ensure existing users are marked as onboarded
+                    hasOnboarded: true // Auto-onboard returning users
                 }
             })
 
-            // Store the database user ID
-            cookieStore.set('user_id', user.id, {
+            // Redirect to Workspaces
+            const response = NextResponse.redirect(new URL('/workspaces', request.url))
+
+            // Set session cookie on the response
+            response.cookies.set('user_id', user.id, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 maxAge: 60 * 60 * 24 * 7,
                 path: '/',
             })
 
-            return NextResponse.redirect(new URL('/workspaces', request.url))
+            return response
         }
+
+        // NEW USER: Create & Go to Onboarding
+        user = await prisma.user.create({
+            data: {
+                email: discordUser.email || `discord_${discordUser.id}@discord.user`,
+                name: discordUser.global_name || discordUser.username,
+                avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
+                discordId: discordUser.id,
+                role: 'Member',
+                hasOnboarded: false,
+            },
+            include: { workspace: true }
+        })
+
+        const response = NextResponse.redirect(new URL('/onboarding', request.url))
+
+        response.cookies.set('user_id', user.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 60 * 60 * 24 * 7,
+            path: '/',
+        })
+
+        return response
 
     } catch (error) {
         console.error('Discord OAuth error:', error)
