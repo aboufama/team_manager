@@ -217,8 +217,7 @@ export async function updateTaskStatus(taskId: string, columnId: string, project
                                 project: { select: { name: true, workspaceId: true } }
                             }
                         }
-                    },
-                    select: { id: true } // Assuming this was the intended change based on the surrounding context
+                    }
                 }
             }
         })
