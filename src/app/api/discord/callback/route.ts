@@ -95,36 +95,42 @@ export async function GET(request: Request) {
                     avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
                     discordId: discordUser.id,
                     role: 'Member', // Default role
-                    hasOnboarded: false, // Ensure this is explicit
+                    hasOnboarded: false, // Explicitly false for NEW users
                 },
                 include: { workspace: true }
             })
+
+            // Store the database user ID
+            cookieStore.set('user_id', user.id, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: 60 * 60 * 24 * 7,
+                path: '/',
+            })
+
+            return NextResponse.redirect(new URL('/onboarding', request.url))
+
         } else {
-            // Update avatar if needed
+            // Existing user found
             await prisma.user.update({
                 where: { id: user.id },
                 data: {
                     avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
-                    discordId: discordUser.id, // Update discordId just in case
+                    discordId: discordUser.id,
+                    hasOnboarded: true // Ensure existing users are marked as onboarded
                 }
             })
+
+            // Store the database user ID
+            cookieStore.set('user_id', user.id, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: 60 * 60 * 24 * 7,
+                path: '/',
+            })
+
+            return NextResponse.redirect(new URL('/workspaces', request.url))
         }
-
-        // Store the database user ID
-        cookieStore.set('user_id', user.id, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 60 * 60 * 24 * 7,
-            path: '/',
-        })
-
-        // Check onboarding status
-        if (!user.hasOnboarded) {
-            return NextResponse.redirect(new URL('/onboarding', request.url))
-        }
-
-        // Redirect to Workspace Selection
-        return NextResponse.redirect(new URL('/workspaces', request.url))
 
     } catch (error) {
         console.error('Discord OAuth error:', error)
