@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
         const discordUser = JSON.parse(discordUserCookie.value)
         const body = await request.json()
-        const { name, inviteCode } = body
+        const { name, skills, interests } = body
 
         if (!name || name.trim().length === 0) {
             return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -27,6 +27,17 @@ export async function POST(request: Request) {
 
         if (existingUser) {
             // User already exists, just update and return
+            // Ensure we update onboarding fields if they are providing them
+            await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                    name: name.trim(),
+                    skills: skills || [],
+                    interests: interests || null,
+                    hasOnboarded: true
+                }
+            })
+
             cookieStore.set('user_id', existingUser.id, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
@@ -36,50 +47,20 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, userId: existingUser.id })
         }
 
-        // Check if this is the first user (becomes Admin)
-        const userCount = await prisma.user.count()
-        let role = 'Member'
-
-        if (userCount === 0) {
-            role = 'Admin'
-        } else {
-            // Require invite code for subsequent users
-            if (!inviteCode) {
-                return NextResponse.json({ error: 'Invite code is required to join an existing workspace' }, { status: 403 })
-            }
-
-            const invite = await prisma.invite.findUnique({
-                where: { token: inviteCode }
-            })
-
-            if (!invite) {
-                return NextResponse.json({ error: 'Invalid invite code' }, { status: 403 })
-            }
-
-            if (invite.maxUses > 0 && invite.uses >= invite.maxUses) {
-                return NextResponse.json({ error: 'This invite code has reached its maximum uses' }, { status: 403 })
-            }
-
-            if (invite.expiresAt && new Date() > invite.expiresAt) {
-                return NextResponse.json({ error: 'This invite code has expired' }, { status: 403 })
-            }
-
-            // Increment usage
-            await prisma.invite.update({
-                where: { id: invite.id },
-                data: { uses: { increment: 1 } }
-            })
-
-            role = invite.role
-        }
-
         // Create new user
+        // First user is Admin, others are Members
+        const userCount = await prisma.user.count()
+        let role = userCount === 0 ? 'Admin' : 'Member'
+
         const user = await prisma.user.create({
             data: {
                 name: name.trim(),
                 email: `discord_${discordUser.id}@discord.user`,
                 avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
                 role: role,
+                skills: skills || [],
+                interests: interests || null,
+                hasOnboarded: true
             }
         })
 

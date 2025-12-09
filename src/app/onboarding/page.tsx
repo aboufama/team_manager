@@ -3,12 +3,7 @@ import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { OnboardingForm } from "./OnboardingForm"
 
-export default async function OnboardingPage({
-    searchParams
-}: {
-    searchParams: { invite?: string }
-}) {
-    const { invite } = searchParams
+export default async function OnboardingPage() {
     const cookieStore = await cookies()
     const discordUserCookie = cookieStore.get('discord_user')
 
@@ -46,12 +41,9 @@ export default async function OnboardingPage({
                         discordUsername={discordUser.username}
                         discordAvatar={avatarUrl}
                         suggestedName={discordUser.global_name || discordUser.username}
-                        inviteCode={invite}
                     />
-                </CardContent>
-            </Card>
-        </div>
+                </CardContent >
+            </Card >
+        </div >
     )
 }
-
-

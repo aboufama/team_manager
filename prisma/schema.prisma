@@ -25,6 +25,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   chatTyping ChatTyping?
+  
+  // Onboarding fields
+  skills      String[]
+  interests   String?
+  hasOnboarded Boolean @default(false)
 }
 
 model Subteam {
