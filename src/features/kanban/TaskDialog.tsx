@@ -440,18 +440,32 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="endDate" className="text-sm font-medium">Due Date</Label>
                                     {!task && startDate && (
-                                        <button
-                                            type="button"
-                                            className="text-xs text-primary hover:underline font-medium"
-                                            onClick={() => {
-                                                const start = new Date(startDate)
-                                                const oneWeekLater = new Date(start)
-                                                oneWeekLater.setDate(start.getDate() + 7)
-                                                setEndDate(oneWeekLater.toISOString().split('T')[0])
-                                            }}
-                                        >
-                                            + 7 Days
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="text-xs text-primary hover:underline font-medium"
+                                                onClick={() => {
+                                                    const start = new Date(startDate)
+                                                    const nextDay = new Date(start)
+                                                    nextDay.setDate(start.getDate() + 1)
+                                                    setEndDate(nextDay.toISOString().split('T')[0])
+                                                }}
+                                            >
+                                                + 1 Day
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="text-xs text-primary hover:underline font-medium"
+                                                onClick={() => {
+                                                    const start = new Date(startDate)
+                                                    const oneWeekLater = new Date(start)
+                                                    oneWeekLater.setDate(start.getDate() + 7)
+                                                    setEndDate(oneWeekLater.toISOString().split('T')[0])
+                                                }}
+                                            >
+                                                + 7 Days
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                                 <Input

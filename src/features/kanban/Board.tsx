@@ -205,6 +205,18 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
         setColumns(board.columns)
     }, [board.columns])
 
+    // Auto-refresh board data
+    useEffect(() => {
+        const interval = setInterval(() => {
+            // Only refresh if user is not currently interacting with critical UI elements
+            if (!isDragging && !reviewDialog && !doneMoveDialog && !editingTask && !previewingTask && !creatingColumnId && !editingPush && !deletePushId) {
+                router.refresh()
+            }
+        }, 5000)
+
+        return () => clearInterval(interval)
+    }, [isDragging, reviewDialog, doneMoveDialog, editingTask, previewingTask, creatingColumnId, editingPush, deletePushId, router])
+
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
     )
@@ -657,7 +669,16 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
 
     return (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
-            <div className="flex flex-col h-full overflow-y-auto">
+            <div className="flex flex-col h-full overflow-y-auto relative">
+                {/* Live Indicator */}
+                <div className="absolute top-2 right-4 z-10 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity pointer-events-none">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-[10px] font-medium text-muted-foreground tracking-wide">LIVE</span>
+                </div>
+
                 <div className="flex-1 p-4 space-y-4">
                     {pushes.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-[50vh] text-muted-foreground border-2 border-dashed rounded-xl m-4 bg-muted/10">
