@@ -49,6 +49,7 @@ export function GeneralChat() {
     // Mention state
     const [mentionQuery, setMentionQuery] = React.useState<string | null>(null)
     const [mentionIndex, setMentionIndex] = React.useState<number>(-1)
+    const [mentionsOpen, setMentionsOpen] = React.useState(false)
 
     // Derived mentions list
     const mentions = React.useMemo(() => {
@@ -60,15 +61,18 @@ export function GeneralChat() {
     }, [messages, currentUser])
 
     const scrollToMessage = (messageId: string) => {
-        const element = document.getElementById(`msg-${messageId}`)
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            // Optional: Add a temporary highlight flash
-            element.classList.add('bg-primary/10')
-            setTimeout(() => {
-                element.classList.remove('bg-primary/10')
-            }, 2000)
-        }
+        setMentionsOpen(false)
+        // Wait for popover to close to avoid focus fighting
+        setTimeout(() => {
+            const element = document.getElementById(`msg-${messageId}`)
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                element.classList.add('bg-primary/10')
+                setTimeout(() => {
+                    element.classList.remove('bg-primary/10')
+                }, 2000)
+            }
+        }, 100)
     }
 
     // Retrieve user identity & members
@@ -284,7 +288,7 @@ export function GeneralChat() {
             <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur z-10 shrink-0 h-14">
                 <span className="font-semibold text-sm">General Chat</span>
 
-                <Popover>
+                <Popover open={mentionsOpen} onOpenChange={setMentionsOpen}>
                     <PopoverTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 relative hover:bg-muted">
                             <AtSign className="h-4 w-4 text-muted-foreground hover:text-foreground" />

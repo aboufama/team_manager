@@ -147,11 +147,7 @@ export function ProjectGanttChart({ tasks, projectId, sprints = [] }: ProjectGan
             <div className="flex items-center justify-between mb-3 pb-2 border-b shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3 text-xs overflow-x-auto max-w-[600px] scrollbar-hide py-1">
-                        {/* Backlog Legend */}
-                        <div className="flex items-center gap-1 shrink-0">
-                            <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
-                            <span>Backlog</span>
-                        </div>
+
                         {/* Sprint Legends */}
                         {sprints.map(sprint => (
                             <div key={sprint.id} className="flex items-center gap-1 shrink-0">
