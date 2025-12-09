@@ -235,10 +235,9 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
                 const taskTitle = task?.title || 'This task'
                 setAttachmentWarningDialog({ taskTitle })
 
-                const reviewCol = columns.find(c => c.name === 'Review')
-                if (reviewCol && task) {
+                if (columnId && task) {
                     const pushId = task.push?.id || 'backlog'
-                    setFlashingColumnId(`${pushId}::${reviewCol.id}`)
+                    setFlashingColumnId(`${pushId}::${columnId}`)
                     setTimeout(() => setFlashingColumnId(null), 1000)
                 }
 

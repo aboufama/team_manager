@@ -183,13 +183,13 @@ export async function updateTaskStatus(taskId: string, columnId: string, project
         const sourceColumnName = task.column?.name || ''
         const targetColumnName = targetColumn.name
 
-        // SERVER-SIDE: Check if task requires attachment when moving to Review
-        if (targetColumnName === 'Review' && task.requireAttachment) {
+        // SERVER-SIDE: Check if task requires attachment when moving to Review or Done
+        if ((targetColumnName === 'Review' || targetColumnName === 'Done') && task.requireAttachment) {
             const hasAttachments = task.attachments && task.attachments.length > 0
             if (!hasAttachments) {
                 return {
                     error: 'ATTACHMENT_REQUIRED',
-                    message: 'This task requires a file upload before it can be submitted for review.'
+                    message: 'This task requires a file upload before it can be submitted for review or completion.'
                 }
             }
         }
