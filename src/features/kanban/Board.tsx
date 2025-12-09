@@ -13,9 +13,10 @@ import {
 import { arrayMove } from "@dnd-kit/sortable"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { createPortal } from "react-dom"
-import { Plus, ChevronDown, CheckCircle2, Trash2 } from "lucide-react"
+import { Plus, ChevronDown, CheckCircle2, Trash2, Pencil } from "lucide-react"
 import { useRouter } from "next/navigation"
 
+import { PushDialog } from "@/features/pushes/PushDialog"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -127,6 +128,7 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
     } | null>(null)
 
     const [deletePushId, setDeletePushId] = useState<string | null>(null)
+    const [editingPush, setEditingPush] = useState<PushType | null>(null)
 
     const isAdmin = userRole === 'Admin' || userRole === 'Team Lead'
     const { triggerConfetti } = useConfetti()
@@ -611,6 +613,11 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
         setDeletePushId(pushId)
     }
 
+    const handleEditPush = (e: React.MouseEvent, push: PushType) => {
+        e.stopPropagation()
+        setEditingPush(push)
+    }
+
     const confirmDeletePush = async () => {
         if (!deletePushId) return
 
@@ -685,7 +692,7 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
                                                     {isComplete && (
                                                         <span className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 rounded-full ring-1 ring-inset ring-green-600/20">
                                                             <CheckCircle2 className="w-3.5 h-3.5" />
-                                                            Completed on {push.endDate ? new Date(push.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Unknown'}
+                                                            {push.endDate ? `Completed on ${new Date(push.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : 'Completed'}
                                                         </span>
                                                     )}
                                                     {!isComplete && (
@@ -705,14 +712,24 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
                                             <div className="flex items-center gap-4">
                                                 <div className="flex items-center gap-1">
                                                     {isAdmin && (
-                                                        <div
-                                                            role="button"
-                                                            onClick={(e) => handleDeletePush(e, push.id)}
-                                                            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors relative z-10"
-                                                            title="Delete Push"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </div>
+                                                        <>
+                                                            <div
+                                                                role="button"
+                                                                onClick={(e) => handleEditPush(e, push)}
+                                                                className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-primary/10 hover:text-primary transition-colors relative z-10"
+                                                                title="Edit Push"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </div>
+                                                            <div
+                                                                role="button"
+                                                                onClick={(e) => handleDeletePush(e, push.id)}
+                                                                className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors relative z-10"
+                                                                title="Delete Push"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </div>
+                                                        </>
                                                     )}
                                                     <div className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent transition-colors relative z-10">
                                                         <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${!isCollapsed ? 'rotate-180' : ''}`} />
@@ -862,6 +879,15 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {editingPush && (
+                <PushDialog
+                    projectId={projectId}
+                    open={true}
+                    onOpenChange={(open) => !open && setEditingPush(null)}
+                    push={editingPush}
+                />
+            )}
         </DndContext>
     )
 }

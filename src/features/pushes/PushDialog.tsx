@@ -12,34 +12,46 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createPush } from "@/app/actions/pushes"
+import { createPush, updatePush } from "@/app/actions/pushes"
+
+type PushType = {
+    id: string
+    name: string
+    startDate: Date | string
+    endDate: Date | string | null
+    status: string
+    projectId: string
+}
 
 interface PushDialogProps {
     projectId: string
     open: boolean
     onOpenChange: (open: boolean) => void
+    push?: PushType | null
 }
 
 // Calculate default dates
 const getDefaultStartDate = () => new Date().toISOString().split('T')[0]
 const getDefaultEndDate = () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-export function PushDialog({ projectId, open, onOpenChange }: PushDialogProps) {
+export function PushDialog({ projectId, open, onOpenChange, push }: PushDialogProps) {
     const router = useRouter()
 
-    const [name, setName] = useState("")
-    const [startDate, setStartDate] = useState(getDefaultStartDate())
-    const [endDate, setEndDate] = useState("") // Optional default
+    const [name, setName] = useState(push?.name || "")
+    const [startDate, setStartDate] = useState(push?.startDate ? new Date(push.startDate).toISOString().split('T')[0] : getDefaultStartDate())
+    const [endDate, setEndDate] = useState(push?.endDate ? new Date(push.endDate).toISOString().split('T')[0] : "")
     const [error, setError] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
 
-    // Reset dates when dialog opens
+    // Reset dates when dialog opens or push changes
     useEffect(() => {
         if (open) {
-            setStartDate(getDefaultStartDate())
-            setEndDate("") // Optional
+            setName(push?.name || "")
+            setStartDate(push?.startDate ? new Date(push.startDate).toISOString().split('T')[0] : getDefaultStartDate())
+            setEndDate(push?.endDate ? new Date(push.endDate).toISOString().split('T')[0] : "")
+            setError(null)
         }
-    }, [open])
+    }, [open, push])
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -60,20 +72,32 @@ export function PushDialog({ projectId, open, onOpenChange }: PushDialogProps) {
             return
         }
 
-        const formData = new FormData()
-        formData.append('name', name.trim())
-        formData.append('projectId', projectId)
-        formData.append('startDate', startDate)
-        if (endDate) formData.append('endDate', endDate)
-
         startTransition(async () => {
-            const result = await createPush(formData)
+            let result
+            if (push) {
+                result = await updatePush({
+                    id: push.id,
+                    name: name.trim(),
+                    startDate,
+                    endDate: endDate || null
+                })
+            } else {
+                const formData = new FormData()
+                formData.append('name', name.trim())
+                formData.append('projectId', projectId)
+                formData.append('startDate', startDate)
+                if (endDate) formData.append('endDate', endDate)
+                result = await createPush(formData)
+            }
+
             if (result.error) {
                 setError(result.error)
             } else {
-                setName("")
-                setStartDate(getDefaultStartDate())
-                setEndDate("")
+                if (!push) { // Only reset if creating new
+                    setName("")
+                    setStartDate(getDefaultStartDate())
+                    setEndDate("")
+                }
                 setError(null)
                 onOpenChange(false)
                 router.refresh()
@@ -93,7 +117,7 @@ export function PushDialog({ projectId, open, onOpenChange }: PushDialogProps) {
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Create New Push</DialogTitle>
+                    <DialogTitle>{push ? "Edit Push" : "Create New Push"}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
@@ -141,7 +165,7 @@ export function PushDialog({ projectId, open, onOpenChange }: PushDialogProps) {
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isPending}>
-                            {isPending ? "Creating..." : "Create Push"}
+                            {isPending ? (push ? "Updating..." : "Creating...") : (push ? "Update Push" : "Create Push")}
                         </Button>
                     </DialogFooter>
                 </form>
