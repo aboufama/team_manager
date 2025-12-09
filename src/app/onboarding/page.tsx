@@ -3,9 +3,16 @@ import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { OnboardingForm } from "./OnboardingForm"
 
+import { getCurrentUser } from "@/lib/auth"
+
 export default async function OnboardingPage() {
     const cookieStore = await cookies()
     const discordUserCookie = cookieStore.get('discord_user')
+    const user = await getCurrentUser()
+
+    if (user && user.hasOnboarded) {
+        redirect('/workspaces')
+    }
 
     if (!discordUserCookie) {
         redirect('/')

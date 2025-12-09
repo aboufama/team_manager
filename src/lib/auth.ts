@@ -41,7 +41,10 @@ export async function getCurrentUser() {
                     workspaceName: dbUser.workspace?.name,
                     workspace: dbUser.workspace,
                     memberships: dbUser.memberships,
-                    discordId: dbUser.discordId
+                    discordId: dbUser.discordId,
+                    hasOnboarded: dbUser.hasOnboarded,
+                    skills: dbUser.skills,
+                    interests: dbUser.interests
                 }
             }
         }
@@ -55,7 +58,10 @@ export async function getCurrentUser() {
                 email: `discord_${discordUser.id}@discord.user`,
                 avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
                 role: 'Member' as const,
-                discordId: discordUser.id
+                discordId: discordUser.id,
+                hasOnboarded: false,
+                skills: [],
+                interests: null
             }
         }
 
