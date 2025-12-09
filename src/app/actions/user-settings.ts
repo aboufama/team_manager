@@ -11,6 +11,10 @@ export async function updateDisplayName(newName: string) {
         return { error: "Name cannot be empty" }
     }
 
+    if (!newName.trim().includes(' ')) {
+        return { error: "Please enter your full name (First and Last name)" }
+    }
+
     if (newName.trim().length > 50) {
         return { error: "Name must be 50 characters or less" }
     }

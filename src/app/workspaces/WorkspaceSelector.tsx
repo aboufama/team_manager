@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,13 @@ export function WorkspaceSelector({ user }: { user: any }) {
     const [editedName, setEditedName] = useState(user.name || '')
     const [nameError, setNameError] = useState<string | null>(null)
     const [displayName, setDisplayName] = useState(user.name || '')
+    const [showNameWarning, setShowNameWarning] = useState(false)
+
+    useEffect(() => {
+        if (user.name && !user.name.trim().includes(' ')) {
+            setShowNameWarning(true)
+        }
+    }, [user.name])
 
     // Custom notification state - now includes action to run after dismiss
     const [notification, setNotification] = useState<{
@@ -106,6 +113,7 @@ export function WorkspaceSelector({ user }: { user: any }) {
             } else {
                 setDisplayName(editedName.trim())
                 setIsEditingName(false)
+                setShowNameWarning(false)
             }
         })
     }
@@ -118,6 +126,25 @@ export function WorkspaceSelector({ user }: { user: any }) {
 
     return (
         <div className="w-full max-w-5xl space-y-6 md:space-y-8 animate-in fade-in zoom-in-95 duration-500 px-4 md:px-0">
+            {showNameWarning && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-md flex items-center justify-between gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                        <Info className="w-4 h-4 text-amber-600" />
+                        <p>We've updated our policy. Please update your display name to your <strong>Full Name</strong> (First & Last) so your team can identify you.</p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-white border-amber-200 hover:bg-amber-100 text-amber-800 h-8 whitespace-nowrap"
+                        onClick={() => {
+                            setIsEditingName(true)
+                            setEditedName(displayName) // ensure current name is in input
+                        }}
+                    >
+                        Update Name
+                    </Button>
+                </div>
+            )}
             {/* Header */}
             <div className="flex flex-col gap-4 md:gap-6 pb-4 md:pb-6 border-b border-zinc-200">
                 <div className="flex items-center gap-3 md:gap-4">
