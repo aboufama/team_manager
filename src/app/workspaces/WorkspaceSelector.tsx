@@ -94,6 +94,10 @@ export function WorkspaceSelector({ user }: { user: any }) {
             setNameError("Name cannot be empty")
             return
         }
+        if (!editedName.trim().includes(' ')) {
+            setNameError("Please enter your full name (First and Last name)")
+            return
+        }
         setNameError(null)
         startTransition(async () => {
             const res = await updateDisplayName(editedName.trim())
@@ -129,7 +133,7 @@ export function WorkspaceSelector({ user }: { user: any }) {
                                     value={editedName}
                                     onChange={(e) => setEditedName(e.target.value)}
                                     className="h-7 text-sm max-w-[200px]"
-                                    placeholder="Your display name"
+                                    placeholder="First Last"
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleSaveName()
