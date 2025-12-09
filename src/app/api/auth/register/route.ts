@@ -20,9 +20,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Name is required' }, { status: 400 })
         }
 
-        // Check if user already exists
+        // Check if user exists in database
         const existingUser = await prisma.user.findFirst({
-            where: { email: `discord_${discordUser.id}@discord.user` }
+            where: {
+                OR: [
+                    { discordId: discordUser.id },
+                    { email: discordUser.email || `discord_${discordUser.id}@discord.user` },
+                    { email: `discord_${discordUser.id}@discord.user` }
+                ]
+            }
         })
 
         if (existingUser) {

@@ -78,8 +78,9 @@ export async function GET(request: Request) {
         let user = await prisma.user.findFirst({
             where: {
                 OR: [
-                    { email: `discord_${discordUser.id}@discord.user` },
-                    { email: discordUser.email || `discord_${discordUser.id}@discord.user` }
+                    { discordId: discordUser.id },
+                    { email: discordUser.email || `discord_${discordUser.id}@discord.user` },
+                    { email: `discord_${discordUser.id}@discord.user` }
                 ]
             },
             include: { workspace: true }
