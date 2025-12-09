@@ -239,39 +239,9 @@ export function GeneralChat() {
         }
     }
 
-    const [typingUsers, setTypingUsers] = React.useState<User[]>([])
-    const lastTypingSentRef = React.useRef<number>(0)
-
-    // ... existing logic ...
-
-    // Poll for typing status
-    React.useEffect(() => {
-        const fetchTyping = async () => {
-            try {
-                const res = await fetch('/api/chat/typing')
-                if (res.ok) {
-                    const users = await res.json()
-                    setTypingUsers(users)
-                }
-            } catch (e) {
-                console.error(e)
-            }
-        }
-        fetchTyping()
-        const interval = setInterval(fetchTyping, 2000)
-        return () => clearInterval(interval)
-    }, [])
-
     const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value
         setInputValue(val)
-
-        // Typing indicator logic
-        const now = Date.now()
-        if (now - lastTypingSentRef.current > 2000) {
-            lastTypingSentRef.current = now
-            fetch('/api/chat/typing', { method: 'POST' }).catch(console.error)
-        }
 
         // Simple mention detection: checks if last word starts with @
         const lastWord = val.split(' ').pop()
@@ -310,29 +280,6 @@ export function GeneralChat() {
     // Member suggestions - Exclude everyone from dropdown
     const filteredMembers = members.filter(m => m.name.toLowerCase().includes(mentionQuery?.toLowerCase() || ""))
     const suggestions = mentionQuery !== null ? filteredMembers : []
-
-    // ...
-
-    // Typing indicator component
-    const TypingIndicator = () => {
-        if (typingUsers.length === 0) return null
-
-        let text = ""
-        if (typingUsers.length === 1) text = `${typingUsers[0].name} is typing...`
-        else if (typingUsers.length === 2) text = `${typingUsers[0].name} and ${typingUsers[1].name} are typing...`
-        else text = "Several people are typing..."
-
-        return (
-            <div className="absolute bottom-full left-4 mb-1 text-[10px] text-muted-foreground animate-pulse flex items-center gap-1">
-                <span className="flex gap-0.5">
-                    <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce delay-0" />
-                    <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce delay-150" />
-                    <span className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce delay-300" />
-                </span>
-                {text}
-            </div>
-        )
-    }
 
     return (
         <div className="flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative">
@@ -487,7 +434,6 @@ export function GeneralChat() {
 
             {/* Input Area */}
             <div className="p-2 bg-background shrink-0 relative z-20">
-                <TypingIndicator />
                 {/* Mention Popover */}
                 {mentionQuery !== null && suggestions.length > 0 && (
                     <div className="absolute bottom-full left-2 mb-2 w-64 bg-popover border rounded-md shadow-lg overflow-hidden flex flex-col max-h-48 z-50">
@@ -558,12 +504,6 @@ export function GeneralChat() {
                     <div className="relative flex-1 min-w-0 grid py-0.5">
                         {/* Backdrop (Highlighter) */}
                         <div className="col-start-1 row-start-1 pointer-events-none whitespace-pre-wrap break-words text-xs px-0 font-sans leading-5 invisible">
-                            {/* Invisible copy to push height if using grid stack for auto-height, 
-                                 but easier to just let textarea handle scroll or use a specialized component. 
-                                 Let's use the transparent overlay method with absolute positioning 
-                                 if we want fixed height scroll, or grid stack for auto-grow. 
-                                 User previously had h-auto. Let's try grid stack auto-grow.
-                             */}
                             {inputValue + ' '}
                         </div>
 
@@ -587,7 +527,6 @@ export function GeneralChat() {
                             value={inputValue}
                             onChange={(e) => {
                                 handleInput(e as any)
-                                // Auto-grow handled by grid stack usually, but textarea needs overflow-hidden to not show scrollbar double
                             }}
                             onKeyDown={handleKeyDown}
                             placeholder={inputValue ? "" : "Message..."}
