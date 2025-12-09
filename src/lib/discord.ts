@@ -1,5 +1,3 @@
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1447090392200646667/H1Sk99HDf1sBUHd-sU87Ve4f7WArDwiSdBso0vqC6B0b4qHfpb_qk-_1zc5ZVFXUrgdw'
-
 type DiscordEmbed = {
     title?: string
     description?: string
@@ -9,9 +7,14 @@ type DiscordEmbed = {
     timestamp?: string
 }
 
-export async function sendDiscordNotification(content: string, embeds?: DiscordEmbed[]) {
+export async function sendDiscordNotification(content: string, embeds?: DiscordEmbed[], webhookUrl?: string | null) {
+    if (!webhookUrl) {
+        console.warn('No Discord webhook URL provided, skipping notification.')
+        return false
+    }
+
     try {
-        const response = await fetch(DISCORD_WEBHOOK_URL, {
+        const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -33,7 +36,7 @@ export async function sendDiscordNotification(content: string, embeds?: DiscordE
 }
 
 // Helper functions for common notifications
-export async function notifyTaskCreated(taskTitle: string, projectName: string, assigneeName?: string, assigneeDiscordId?: string | null) {
+export async function notifyTaskCreated(taskTitle: string, projectName: string, assigneeName?: string, assigneeDiscordId?: string | null, webhookUrl?: string | null) {
     const content = assigneeDiscordId ? `<@${assigneeDiscordId}>` : ''
     return sendDiscordNotification(content, [{
         title: '📋 New Task Created',
@@ -44,10 +47,10 @@ export async function notifyTaskCreated(taskTitle: string, projectName: string, 
             { name: 'Assignee', value: assigneeName || 'Unassigned', inline: true },
         ],
         timestamp: new Date().toISOString(),
-    }])
+    }], webhookUrl)
 }
 
-export async function notifyTaskCompleted(taskTitle: string, projectName: string, completedBy: string, completedByDiscordId?: string | null) {
+export async function notifyTaskCompleted(taskTitle: string, projectName: string, completedBy: string, completedByDiscordId?: string | null, webhookUrl?: string | null) {
     // Only ping if we want (maybe not for completion? User said "all events... ping the right person")
     const content = completedByDiscordId ? `<@${completedByDiscordId}>` : ''
     return sendDiscordNotification(content, [{
@@ -59,10 +62,10 @@ export async function notifyTaskCompleted(taskTitle: string, projectName: string
             { name: 'Completed by', value: completedBy, inline: true },
         ],
         timestamp: new Date().toISOString(),
-    }])
+    }], webhookUrl)
 }
 
-export async function notifyTaskSubmittedForReview(taskTitle: string, projectName: string, submittedBy: string, submittedByDiscordId?: string | null) {
+export async function notifyTaskSubmittedForReview(taskTitle: string, projectName: string, submittedBy: string, submittedByDiscordId?: string | null, webhookUrl?: string | null) {
     const content = submittedByDiscordId ? `<@${submittedByDiscordId}>` : ''
     return sendDiscordNotification(content, [{
         title: '🔍 Task Submitted for Review',
@@ -73,10 +76,10 @@ export async function notifyTaskSubmittedForReview(taskTitle: string, projectNam
             { name: 'Submitted by', value: submittedBy, inline: true },
         ],
         timestamp: new Date().toISOString(),
-    }])
+    }], webhookUrl)
 }
 
-export async function notifyProjectCreated(projectName: string, leadName?: string) {
+export async function notifyProjectCreated(projectName: string, leadName?: string, webhookUrl?: string | null) {
     return sendDiscordNotification('', [{
         title: '🚀 New Project Created',
         description: `**${projectName}**`,
@@ -85,19 +88,19 @@ export async function notifyProjectCreated(projectName: string, leadName?: strin
             { name: 'Lead', value: leadName, inline: true },
         ] : [],
         timestamp: new Date().toISOString(),
-    }])
+    }], webhookUrl)
 }
 
-export async function notifyUserJoined(userName: string) {
+export async function notifyUserJoined(userName: string, webhookUrl?: string | null) {
     return sendDiscordNotification('', [{
         title: '👋 New Team Member',
         description: `**${userName}** has joined the workspace!`,
         color: 0x5865F2,
         timestamp: new Date().toISOString(),
-    }])
+    }], webhookUrl)
 }
 
-export async function notifyTaskUpdated(taskTitle: string, projectName: string, updatedBy: string, changes: Array<{ field: string; oldValue: string; newValue: string }>) {
+export async function notifyTaskUpdated(taskTitle: string, projectName: string, updatedBy: string, changes: Array<{ field: string; oldValue: string; newValue: string }>, webhookUrl?: string | null) {
     const fields = changes.map(change => ({
         name: change.field,
         value: `**Before:** ${change.oldValue || 'None'}\n**After:** ${change.newValue || 'None'}`,
@@ -114,10 +117,10 @@ export async function notifyTaskUpdated(taskTitle: string, projectName: string, 
             ...fields
         ],
         timestamp: new Date().toISOString(),
-    }])
+    }], webhookUrl)
 }
 
-export async function notifyTaskOverdue(taskTitle: string, projectName: string, daysOverdue: number, assigneeName?: string) {
+export async function notifyTaskOverdue(taskTitle: string, projectName: string, daysOverdue: number, assigneeName?: string, webhookUrl?: string | null) {
     return sendDiscordNotification('', [{
         title: '⚠️ Task Overdue',
         description: `**${taskTitle}**`,
@@ -128,5 +131,5 @@ export async function notifyTaskOverdue(taskTitle: string, projectName: string, 
             { name: 'Assignee', value: assigneeName || 'Unassigned', inline: true },
         ],
         timestamp: new Date().toISOString(),
-    }])
+    }], webhookUrl)
 }

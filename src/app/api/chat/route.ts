@@ -60,7 +60,12 @@ export async function POST(request: Request) {
             // Import dynamically to avoid circular deps if any (though static import is fine usually)
             const { sendDiscordNotification } = await import('@/lib/discord')
 
-            // 1. Fetch workspace members to resolve mentions
+            // 1. Fetch workspace (for webhook) and members (for mentions)
+            const workspace = await prisma.workspace.findUnique({
+                where: { id: user.workspaceId },
+                select: { discordChannelId: true }
+            })
+
             const workspaceMembers = await prisma.user.findMany({
                 where: {
                     OR: [
@@ -101,9 +106,10 @@ export async function POST(request: Request) {
             // We prepend the author name
             const finalMessage = `**[Chat] ${user.name || 'User'}:** ${discordContent}`
 
-            // Send if it has mentions OR if we want to forward all chat messages (User asked for "pings in user ping that user... and all events")
-            // Assuming we forward all messages but pings work
-            await sendDiscordNotification(finalMessage)
+            // Only send if it has mentions (User asked: "only bring chats to the discrod if they at somehting")
+            if (hasMentions && workspace?.discordChannelId) {
+                await sendDiscordNotification(finalMessage, undefined, workspace.discordChannelId)
+            }
 
         } catch (discordErr) {
             console.error('Failed to send Discord notification for chat:', discordErr)

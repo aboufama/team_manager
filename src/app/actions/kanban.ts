@@ -120,15 +120,24 @@ export async function createTask(input: CreateTaskInput) {
             })
         }
 
-        // Get project name for Discord notification
+        // Get project name and workspace ID for Discord notification
         const project = await prisma.project.findUnique({
             where: { id: projectId },
-            select: { name: true }
+            select: { name: true, workspaceId: true }
         })
 
         // Send Discord notification
         if (project) {
-            notifyTaskCreated(task.title, project.name, task.assignee?.name, task.assignee?.discordId)
+            let webhookUrl: string | null = null
+            if (project.workspaceId) {
+                const workspace = await prisma.workspace.findUnique({
+                    where: { id: project.workspaceId },
+                    select: { discordChannelId: true }
+                })
+                webhookUrl = workspace?.discordChannelId || null
+            }
+
+            notifyTaskCreated(task.title, project.name, task.assignee?.name, task.assignee?.discordId, webhookUrl)
         }
 
         revalidatePath(`/dashboard/projects/${projectId}`)
@@ -202,7 +211,7 @@ export async function updateTaskStatus(taskId: string, columnId: string, project
                     include: {
                         board: {
                             include: {
-                                project: { select: { name: true } }
+                                project: { select: { name: true, workspaceId: true } }
                             }
                         }
                     }
@@ -230,12 +239,22 @@ export async function updateTaskStatus(taskId: string, columnId: string, project
 
         // Send Discord notification based on column
         const projectName = updatedTask.column?.board?.project?.name || 'Unknown Project'
+        const workspaceId = updatedTask.column?.board?.project?.workspaceId
         const userName = user?.name || 'Someone'
 
+        let webhookUrl: string | null = null
+        if (workspaceId) {
+            const workspace = await prisma.workspace.findUnique({
+                where: { id: workspaceId },
+                select: { discordChannelId: true }
+            })
+            webhookUrl = workspace?.discordChannelId || null
+        }
+
         if (targetColumnName === 'Done') {
-            notifyTaskCompleted(updatedTask.title, projectName, userName, user.discordId)
+            notifyTaskCompleted(updatedTask.title, projectName, userName, user.discordId, webhookUrl)
         } else if (targetColumnName === 'Review') {
-            notifyTaskSubmittedForReview(updatedTask.title, projectName, userName, user.discordId)
+            notifyTaskSubmittedForReview(updatedTask.title, projectName, userName, user.discordId, webhookUrl)
         }
 
         return { success: true }
@@ -414,18 +433,15 @@ export async function updateTaskDetails(taskId: string, input: Partial<CreateTas
             // Notify admins if there are changes
             if (changes.length > 0 && task.column?.board?.project?.workspaceId) {
                 const workspaceId = task.column.board.project.workspaceId
-                const admins = await prisma.user.findMany({
-                    where: {
-                        role: { in: ['Admin', 'Team Lead'] },
-                        OR: [
-                            { workspaceId },
-                            { memberships: { some: { workspaceId } } }
-                        ]
-                    }
+
+                const workspace = await prisma.workspace.findUnique({
+                    where: { id: workspaceId },
+                    select: { discordChannelId: true }
                 })
+                const webhookUrl = workspace?.discordChannelId || null
 
                 const projectName = task.column?.board?.project?.name || 'Unknown Project'
-                await notifyTaskUpdated(task.title, projectName, user.name || 'Unknown', changes)
+                await notifyTaskUpdated(task.title, projectName, user.name || 'Unknown', changes, webhookUrl)
             }
         }
 
