@@ -23,6 +23,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
     Dialog,
     DialogContent,
@@ -43,6 +45,13 @@ type Project = {
     description: string | null
     leadId: string | null
     lead: { id: string; name: string } | null
+    members: { userId: string }[]
+}
+
+type UserCandidate = {
+    id: string
+    name: string
+    role: string
 }
 
 type LeadCandidate = {
@@ -64,7 +73,8 @@ export function Sidebar() {
     const router = useRouter()
     const [userData, setUserData] = React.useState<UserData>({ name: "User", role: "Member", id: null, avatar: null })
     const [projects, setProjects] = React.useState<Project[]>([])
-    const [leadCandidates, setLeadCandidates] = React.useState<LeadCandidate[]>([])
+    const [leadCandidates, setLeadCandidates] = React.useState<UserCandidate[]>([])
+    const [allUsers, setAllUsers] = React.useState<UserCandidate[]>([])
     const [projectsOpen, setProjectsOpen] = React.useState(true)
     const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
     const [editingProject, setEditingProject] = React.useState<Project | null>(null)
@@ -75,6 +85,7 @@ export function Sidebar() {
     // Form state for editing
     const [newProjectLeadId, setNewProjectLeadId] = React.useState("none")
     const [editLeadId, setEditLeadId] = React.useState<string>("none")
+    const [selectedMemberIds, setSelectedMemberIds] = React.useState<string[]>([])
 
     const isAdmin = userData.role === 'Admin' || userData.role === 'Team Lead'
 
@@ -111,27 +122,55 @@ export function Sidebar() {
             .catch(() => { })
     }, [])
 
-    // Fetch lead candidates
-    const fetchLeadCandidates = React.useCallback(() => {
+    // Fetch lead candidates & all users
+    const fetchUsers = React.useCallback(() => {
+        // Fetch potential leads
         fetch('/api/users?role=leads')
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) setLeadCandidates(data)
             })
             .catch(() => { })
+
+        // Fetch all users for membership
+        fetch('/api/users')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setAllUsers(data)
+            })
+            .catch(() => { })
     }, [])
 
     React.useEffect(() => {
         fetchProjects()
-        fetchLeadCandidates()
-    }, [fetchProjects, fetchLeadCandidates])
+        fetchUsers()
+    }, [fetchProjects, fetchUsers])
 
     // When editing project changes, update the lead id state
     React.useEffect(() => {
         if (editingProject) {
             setEditLeadId(editingProject.leadId || "none")
+            setSelectedMemberIds(editingProject.members?.map(m => m.userId) || [])
+        } else {
+            setSelectedMemberIds([])
         }
     }, [editingProject])
+
+    // When Create Dialog opens, reset members
+    React.useEffect(() => {
+        if (createDialogOpen) {
+            setSelectedMemberIds([])
+            setNewProjectLeadId("none")
+        }
+    }, [createDialogOpen])
+
+    const toggleMember = (userId: string) => {
+        setSelectedMemberIds(prev =>
+            prev.includes(userId)
+                ? prev.filter(id => id !== userId)
+                : [...prev, userId]
+        )
+    }
 
     // Create project
     const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -149,7 +188,8 @@ export function Sidebar() {
         const payload = {
             name: formData.get('name'),
             description: formData.get('description'),
-            leadId: leadId
+            leadId: leadId,
+            memberIds: selectedMemberIds
         }
 
         try {
@@ -197,7 +237,8 @@ export function Sidebar() {
                 body: JSON.stringify({
                     name: formData.get('name'),
                     description: formData.get('description'),
-                    leadId: editLeadId === 'none' ? null : editLeadId
+                    leadId: editLeadId === 'none' ? null : editLeadId,
+                    memberIds: selectedMemberIds
                 })
             })
             if (res.ok) {
@@ -418,6 +459,41 @@ export function Sidebar() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs">Members</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between h-8 text-sm px-2 font-normal">
+                                            <span className="truncate">
+                                                {selectedMemberIds.length === 0
+                                                    ? "Select members..."
+                                                    : `${selectedMemberIds.length} selected`}
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[200px] p-0" align="start">
+                                        <div className="max-h-[200px] overflow-y-auto p-1">
+                                            {allUsers.map(user => (
+                                                <div
+                                                    key={user.id}
+                                                    className="flex items-center space-x-2 px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
+                                                    onClick={() => toggleMember(user.id)}
+                                                >
+                                                    <Checkbox
+                                                        checked={selectedMemberIds.includes(user.id)}
+                                                        onCheckedChange={() => toggleMember(user.id)}
+                                                        id={`create-member-${user.id}`}
+                                                    />
+                                                    <label htmlFor={`create-member-${user.id}`} className="text-sm cursor-pointer flex-1">
+                                                        {user.name}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button type="submit" disabled={isSubmitting} size="sm">
@@ -471,6 +547,41 @@ export function Sidebar() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs">Members</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between h-8 text-sm px-2 font-normal">
+                                            <span className="truncate">
+                                                {selectedMemberIds.length === 0
+                                                    ? "Select members..."
+                                                    : `${selectedMemberIds.length} selected`}
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[200px] p-0" align="start">
+                                        <div className="max-h-[200px] overflow-y-auto p-1">
+                                            {allUsers.map(user => (
+                                                <div
+                                                    key={user.id}
+                                                    className="flex items-center space-x-2 px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
+                                                    onClick={() => toggleMember(user.id)}
+                                                >
+                                                    <Checkbox
+                                                        checked={selectedMemberIds.includes(user.id)}
+                                                        onCheckedChange={() => toggleMember(user.id)}
+                                                        id={`edit-member-${user.id}`}
+                                                    />
+                                                    <label htmlFor={`edit-member-${user.id}`} className="text-sm cursor-pointer flex-1">
+                                                        {user.name}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         </div>
                         <DialogFooter>

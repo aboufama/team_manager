@@ -12,6 +12,12 @@ export async function GET(
             where: { id },
             include: {
                 lead: { select: { id: true, name: true } },
+                members: {
+                    select: {
+                        userId: true,
+                        user: { select: { id: true, name: true } }
+                    }
+                },
                 _count: { select: { pushes: true } }
             }
         })
@@ -41,16 +47,35 @@ export async function PATCH(
 
         const { id } = await params
         const body = await request.json()
-        const { name, description, difficulty, leadId } = body
+        const { name, description, difficulty, leadId, memberIds } = body
 
-        const project = await prisma.project.update({
-            where: { id },
-            data: {
-                ...(name !== undefined && { name }),
-                ...(description !== undefined && { description }),
-                ...(difficulty !== undefined && { difficulty }),
-                ...(leadId !== undefined && { leadId })
+        const project = await prisma.$transaction(async (tx) => {
+            const updatedProject = await tx.project.update({
+                where: { id },
+                data: {
+                    ...(name !== undefined && { name }),
+                    ...(description !== undefined && { description }),
+                    ...(difficulty !== undefined && { difficulty }),
+                    ...(leadId !== undefined && { leadId })
+                }
+            })
+
+            if (memberIds && Array.isArray(memberIds)) {
+                // Replace members
+                await tx.projectMember.deleteMany({
+                    where: { projectId: id }
+                })
+
+                if (memberIds.length > 0) {
+                    await tx.projectMember.createMany({
+                        data: memberIds.map((userId: string) => ({
+                            projectId: id,
+                            userId
+                        }))
+                    })
+                }
             }
+            return updatedProject
         })
 
         return NextResponse.json(project)

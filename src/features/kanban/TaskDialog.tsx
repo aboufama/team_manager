@@ -371,7 +371,8 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[260px] p-0" align="start">
                                             <div className="max-h-[240px] overflow-y-auto p-1">
-                                                {sortedUsers.map(u => (
+                                                {/* Project Members */}
+                                                {users.filter(u => u.isProjectMember).map(u => (
                                                     <div
                                                         key={u.id}
                                                         className="flex items-center space-x-2 px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
@@ -384,10 +385,34 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                                         />
                                                         <label htmlFor={`user-${u.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer flex justify-between">
                                                             <span>{u.name}</span>
-                                                            {u.isProjectMember && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Member</span>}
+                                                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Member</span>
                                                         </label>
                                                     </div>
                                                 ))}
+
+                                                {/* Separator / Toggle for non-members */}
+                                                {users.some(u => !u.isProjectMember) && (
+                                                    <>
+                                                        <div className="h-px bg-border my-1" />
+                                                        <p className="px-2 py-1.5 text-xs text-muted-foreground font-medium">Other Users</p>
+                                                        {users.filter(u => !u.isProjectMember).map(u => (
+                                                            <div
+                                                                key={u.id}
+                                                                className="flex items-center space-x-2 px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
+                                                                onClick={() => toggleAssignee(u.id)}
+                                                            >
+                                                                <Checkbox
+                                                                    checked={assigneeIds.includes(u.id)}
+                                                                    onCheckedChange={() => toggleAssignee(u.id)}
+                                                                    id={`user-${u.id}`}
+                                                                />
+                                                                <label htmlFor={`user-${u.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer">
+                                                                    {u.name}
+                                                                </label>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                )}
                                             </div>
                                         </PopoverContent>
                                     </Popover>

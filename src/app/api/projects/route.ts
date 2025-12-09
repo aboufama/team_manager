@@ -25,7 +25,8 @@ export async function GET(request: Request) {
                 name: true,
                 description: true,
                 leadId: includeLead,
-                lead: includeLead ? { select: { id: true, name: true } } : false
+                lead: includeLead ? { select: { id: true, name: true } } : false,
+                members: { select: { userId: true, user: { select: { name: true } } } }
             }
         })
         return NextResponse.json(projects)
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json()
-        const { name, description, leadId } = body
+        const { name, description, leadId, memberIds } = body
 
         if (!name || name.trim().length === 0) {
             return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -64,6 +65,15 @@ export async function POST(request: Request) {
                     workspaceId: user.workspaceId
                 }
             })
+
+            if (memberIds && Array.isArray(memberIds) && memberIds.length > 0) {
+                await tx.projectMember.createMany({
+                    data: memberIds.map((userId: string) => ({
+                        projectId: p.id,
+                        userId
+                    }))
+                })
+            }
 
             await tx.board.create({
                 data: {
