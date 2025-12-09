@@ -669,15 +669,7 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
 
     return (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
-            <div className="flex flex-col h-full overflow-y-auto relative">
-                {/* Live Indicator */}
-                <div className="absolute top-2 right-4 z-10 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity pointer-events-none">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                    </span>
-                    <span className="text-[10px] font-medium text-muted-foreground tracking-wide">LIVE</span>
-                </div>
+            <div className="flex flex-col h-full overflow-y-auto">
 
                 <div className="flex-1 p-4 space-y-4">
                     {pushes.length === 0 && (
