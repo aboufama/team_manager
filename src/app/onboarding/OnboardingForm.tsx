@@ -30,6 +30,11 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
             return
         }
 
+        if (!name.trim().includes(' ')) {
+            setError("Please enter your full name (First and Last name)")
+            return
+        }
+
         setIsSubmitting(true)
         setError("")
 
@@ -63,17 +68,17 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="name" className="text-[#b5bac1]">Your Name</Label>
+                <Label htmlFor="name" className="text-[#b5bac1]">Full Name</Label>
                 <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your full name"
+                    placeholder="First Last"
                     className="bg-[#1e1f22] border-[#1e1f22] text-white placeholder:text-[#72767d] focus:border-[#5865f2]"
                     disabled={isSubmitting}
                 />
                 <p className="text-xs text-[#72767d]">
-                    This is how your name will appear in the workspace
+                    Please use your real full name so team members can identify you.
                 </p>
             </div>
 
