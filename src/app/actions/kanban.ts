@@ -530,7 +530,7 @@ export async function denyReviewTask(taskId: string, columnId: string, projectId
     return result
 }
 
-export async function updateTaskProgress(taskId: string, progress: number, projectId: string) {
+export async function updateTaskProgress(taskId: string, progress: number, projectId: string, forceMoveToReview: boolean = false) {
     try {
         const user = await getCurrentUser()
         if (!user) {
@@ -552,13 +552,8 @@ export async function updateTaskProgress(taskId: string, progress: number, proje
             return { error: 'Only assignees can update progress' }
         }
 
-        if (isAssignee && progress === 100) {
+        if (forceMoveToReview && isAssignee && progress === 100) {
             // Find "Review" column for this project
-            // We need project ID from task, but task is linked to column which is linked to board
-            // But we can just search for a column named 'Review' in the same board.
-            // Wait, we don't have boardId directly on task usually. Task -> Column -> Board.
-            // Let's go up the chain.
-
             const column = await prisma.column.findUnique({
                 where: { id: task.columnId || undefined },
                 include: { board: { include: { columns: true } } }
@@ -583,10 +578,6 @@ export async function updateTaskProgress(taskId: string, progress: number, proje
             where: { id: taskId },
             data: { progress }
         })
-
-        // We might not want to revalidate on every drag update to avoid flicker, 
-        // but for consistency we can. The client updates optimistically.
-        // revalidatePath(`/dashboard/projects/${projectId}`)
 
         return { success: true }
     } catch (e) {

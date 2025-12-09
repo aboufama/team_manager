@@ -11,6 +11,17 @@ import { updateTaskProgress } from "@/app/actions/kanban"
 import { useState, useEffect, useRef } from "react"
 // import { useDebounce } from "@/hooks/use-debounce" 
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
 type TaskCardProps = {
     task: {
         id: string
@@ -106,17 +117,48 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
         setManualProgress(value[0])
     }
 
+    const [showReviewConfirm, setShowReviewConfirm] = useState(false)
+
     const handleProgressCommit = async (value: number[]) => {
         if (!task.enableProgress) return
 
-        setIsUpdatingProgress(true)
-        const result = await updateTaskProgress(task.id, value[0], projectId || "unknown")
+        // If user drags to 100%, show confirmation prompt
+        if (value[0] === 100) {
+            setShowReviewConfirm(true)
+            // Still update the progress locally/server to 100? 
+            // Better to wait for confirmation for the move, but save the 100% value.
+            // Actually, if they cancel, we might want to keep it at 100 or revert. 
+            // Let's assume we save the 100% value first.
+            await updateTaskProgress(task.id, 100, projectId || "unknown")
+            return
+        }
 
+        setIsUpdatingProgress(true)
+        await updateTaskProgress(task.id, value[0], projectId || "unknown")
+        setIsUpdatingProgress(false)
+    }
+
+    const navToReview = async () => {
+        // Trigger server action to move to review
+        // We can reuse updateTaskProgress but pass a flag, or separate action?
+        // Actually, updateTaskProgress previously inferred it. 
+        // We will modify updateTaskProgress to accept an explicit 'moveToReview' flag or rely on client call to updateTaskStatus.
+        // Let's use updateTaskProgress with a special 'forceReview' flag if we modify it, OR just call updateTaskStatus.
+        // But updateTaskStatus requires us to know the review column ID.
+        // Easier to let updateTaskProgress handle it via a new argument?
+        // Or just let updateTaskProgress handle it if progress is 100 AND we ask it to?
+
+        // Let's modify updateTaskProgress to take a 'moveToReview' boolean. 
+        // For now, I'll assume we updated the server action to NOT auto-move unless requested.
+        // Wait, I am editing the server action too. I will add `moveToReview` param.
+
+        setIsUpdatingProgress(true)
+        const result = await updateTaskProgress(task.id, 100, projectId || "unknown", true)
         if (result.movedToReview) {
             router.refresh()
         }
-
         setIsUpdatingProgress(false)
+        setShowReviewConfirm(false)
     }
 
     const isAssignee = currentUserId && (
@@ -261,7 +303,7 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
                                 </div>
                             </TooltipTrigger>
                             {!canUpdateProgress && (
-                                <TooltipContent side="top" className="text-xs bg-destructive text-destructive-foreground">
+                                <TooltipContent side="top" className="text-[10px] bg-muted text-muted-foreground border shadow-sm px-2 py-1">
                                     <p>Only assignees can update progress</p>
                                 </TooltipContent>
                             )}
@@ -303,6 +345,23 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
             {isHighlighted && (
                 <div className="absolute inset-0 z-10 rounded-lg border-2 border-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)] pointer-events-none animate-highlight-fade" />
             )}
+
+            <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <AlertDialog open={showReviewConfirm} onOpenChange={setShowReviewConfirm}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Task Completed?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                You've marked this task as 100% complete. Would you like to move it to the <strong>Review</strong> column?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>No, keep here</AlertDialogCancel>
+                            <AlertDialogAction onClick={navToReview}>Yes, move to Review</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
         </div>
     )
 }
