@@ -66,10 +66,6 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
     const [error, setError] = useState<string | null>(null)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-    // ... (rest of the code unchanged until handleDelete) ...
-
-
-
     const today = useMemo(() => new Date().toISOString().split('T')[0], [])
 
     // Sort users: project members first, then alphabetical
@@ -93,6 +89,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
     const [existingInstructionsFile, setExistingInstructionsFile] = useState<{ url: string; name: string } | null>(null)
     const [isUploadingInstructions, setIsUploadingInstructions] = useState(false)
     const instructionsFileRef = useRef<HTMLInputElement>(null)
+    const [isDraggingFile, setIsDraggingFile] = useState(false)
 
     // Reset form when task changes or dialog opens
     useEffect(() => {
@@ -302,6 +299,43 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
         })
     }
 
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDraggingFile(true)
+    }
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDraggingFile(false)
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDraggingFile(false)
+
+        const files = e.dataTransfer.files
+        if (files && files.length > 0) {
+            setInstructionsFile(files[0])
+        }
+    }
+
+    const handleAddDay = () => {
+        const base = endDate ? new Date(endDate) : (startDate ? new Date(startDate) : new Date(today))
+        const next = new Date(base)
+        next.setDate(base.getDate() + 1)
+        setEndDate(next.toISOString().split('T')[0])
+    }
+
+    const handleAddWeek = () => {
+        const base = endDate ? new Date(endDate) : (startDate ? new Date(startDate) : new Date(today))
+        const next = new Date(base)
+        next.setDate(base.getDate() + 7)
+        setEndDate(next.toISOString().split('T')[0])
+    }
+
     return (
         <>
             <Dialog open={open} onOpenChange={isControlled ? onOpenChange : setInternalOpen}>
@@ -377,7 +411,6 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[260px] p-0" align="start">
                                             <div className="max-h-[240px] overflow-y-auto p-1">
-                                                {/* Project Members */}
                                                 {users.filter(u => u.isProjectMember).map(u => (
                                                     <div
                                                         key={u.id}
@@ -396,7 +429,6 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                                     </div>
                                                 ))}
 
-                                                {/* Separator / Toggle for non-members */}
                                                 {users.some(u => !u.isProjectMember) && (
                                                     <>
                                                         <div className="h-px bg-border my-1" />
@@ -444,24 +476,14 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                             <button
                                                 type="button"
                                                 className="text-xs text-primary hover:underline font-medium"
-                                                onClick={() => {
-                                                    const start = new Date(startDate)
-                                                    const nextDay = new Date(start)
-                                                    nextDay.setDate(start.getDate() + 1)
-                                                    setEndDate(nextDay.toISOString().split('T')[0])
-                                                }}
+                                                onClick={handleAddDay}
                                             >
                                                 + 1 Day
                                             </button>
                                             <button
                                                 type="button"
                                                 className="text-xs text-primary hover:underline font-medium"
-                                                onClick={() => {
-                                                    const start = new Date(startDate)
-                                                    const oneWeekLater = new Date(start)
-                                                    oneWeekLater.setDate(start.getDate() + 7)
-                                                    setEndDate(oneWeekLater.toISOString().split('T')[0])
-                                                }}
+                                                onClick={handleAddWeek}
                                             >
                                                 + 7 Days
                                             </button>
@@ -565,13 +587,16 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                 ) : (
                                     <div
                                         onClick={() => instructionsFileRef.current?.click()}
-                                        className="border-2 border-dashed rounded-lg p-6 hover:bg-muted/30 transition-colors cursor-pointer flex flex-col items-center justify-center text-center gap-2"
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                        className={`border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer flex flex-col items-center justify-center text-center gap-2 ${isDraggingFile ? 'border-primary bg-primary/10' : 'hover:bg-muted/30 border-muted-foreground/30'}`}
                                     >
                                         <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                                             <Upload className="h-4 w-4 text-muted-foreground" />
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-sm font-medium">Click to upload instructions</p>
+                                            <p className="text-sm font-medium">Click or drag & drop to upload</p>
                                             <p className="text-xs text-muted-foreground">PDF, Word, Images up to 10MB</p>
                                         </div>
                                     </div>

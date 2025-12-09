@@ -288,7 +288,7 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
                     <TooltipProvider>
                         <Tooltip delayDuration={0}>
                             <TooltipTrigger asChild>
-                                <div className={cn("relative flex items-center gap-2", !canUpdateProgress && "cursor-not-allowed opacity-80")}>
+                                <div className={cn("relative flex items-center gap-2", !canUpdateProgress && "opacity-80")}>
                                     <Slider
                                         disabled={!canUpdateProgress}
                                         value={[manualProgress]}

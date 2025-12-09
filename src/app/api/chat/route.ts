@@ -20,6 +20,15 @@ export async function GET(request: Request) {
             take: limit,
             orderBy: {
                 createdAt: 'desc'
+            },
+            include: {
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true
+                    }
+                }
             }
         })
 

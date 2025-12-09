@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Send, Smile, Loader2, ChevronDown, AtSign } from "lucide-react"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area" // Add this import
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,6 +24,10 @@ type Message = {
     authorName: string
     authorAvatar: string | null
     createdAt: string
+    author?: {
+        name: string
+        avatar: string | null
+    }
 }
 
 type User = {
@@ -109,7 +113,7 @@ export function GeneralChat() {
                                 if (m.authorId !== currentUser?.id) {
                                     if (m.content.includes("@everyone") || (currentUser?.name && m.content.includes(`@${currentUser.name}`))) {
                                         toast({
-                                            title: `New mention from ${m.authorName}`,
+                                            title: `New mention from ${m.author?.name || m.authorName}`,
                                             description: m.content,
                                         })
                                     }
@@ -157,16 +161,13 @@ export function GeneralChat() {
     React.useEffect(() => {
         const viewport = scrollRef.current
         if (!viewport) return
-
         const handleScroll = () => {
             const { scrollTop, scrollHeight, clientHeight } = viewport
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight
             const atBottom = distanceFromBottom < 50
-
             setIsAtBottom(atBottom)
             setShowScrollButton(!atBottom)
         }
-
         viewport.addEventListener('scroll', handleScroll)
         return () => viewport.removeEventListener('scroll', handleScroll)
     }, [])
@@ -200,9 +201,13 @@ export function GeneralChat() {
             content,
             type,
             authorId: currentUser?.id || "temp",
-            authorName: "Me",
+            authorName: currentUser?.name || "Me",
             authorAvatar: null,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            author: {
+                name: currentUser?.name || "Me",
+                avatar: null
+            }
         }
 
         setMessages(prev => [...prev, optimisticMsg])
@@ -283,6 +288,22 @@ export function GeneralChat() {
 
     return (
         <div className="flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative">
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #e2e8f0;
+                    border-radius: 4px;
+                }
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #1e293b;
+                }
+            `}</style>
+
             {/* Chat Header with Mentions */}
             <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur z-10 shrink-0 h-14">
                 <span className="font-semibold text-sm">General Chat</span>
@@ -317,10 +338,10 @@ export function GeneralChat() {
                                         >
                                             <div className="flex items-center gap-2">
                                                 <Avatar className="w-5 h-5">
-                                                    <AvatarImage src={msg.authorAvatar || undefined} />
-                                                    <AvatarFallback className="text-[8px]">{msg.authorName[0]}</AvatarFallback>
+                                                    <AvatarImage src={msg.author?.avatar || msg.authorAvatar || undefined} />
+                                                    <AvatarFallback className="text-[8px]">{msg.author?.name?.[0] || msg.authorName[0]}</AvatarFallback>
                                                 </Avatar>
-                                                <span className="font-medium text-xs truncate">{msg.authorName}</span>
+                                                <span className="font-medium text-xs truncate">{msg.author?.name || msg.authorName}</span>
                                                 <span className="text-[10px] text-muted-foreground ml-auto">
                                                     {new Date(msg.createdAt).toLocaleDateString()}
                                                 </span>
@@ -347,6 +368,9 @@ export function GeneralChat() {
                             const timeString = new Date(msg.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase()
                             const isMentioned = currentUser && (msg.content.includes(`@${currentUser.name}`) || msg.content.includes("@everyone"))
 
+                            const displayName = msg.author?.name || msg.authorName
+                            const displayAvatar = msg.author?.avatar || msg.authorAvatar
+
                             return (
                                 <div
                                     key={msg.id}
@@ -360,9 +384,9 @@ export function GeneralChat() {
                                     {isMentioned && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-yellow-500" />}
                                     {!isGrouped ? (
                                         <Avatar className="w-8 h-8 shrink-0 mt-0.5 cursor-pointer">
-                                            <AvatarImage src={msg.authorAvatar || undefined} />
+                                            <AvatarImage src={displayAvatar || undefined} />
                                             <AvatarFallback className="text-[10px]">
-                                                {msg.authorName[0]}
+                                                {displayName[0]}
                                             </AvatarFallback>
                                         </Avatar>
                                     ) : (
@@ -373,7 +397,7 @@ export function GeneralChat() {
                                         {!isGrouped && (
                                             <div className="flex items-center gap-2">
                                                 <span className="font-semibold text-xs cursor-pointer hover:underline truncate">
-                                                    {msg.authorName}
+                                                    {displayName}
                                                 </span>
                                             </div>
                                         )}
@@ -392,7 +416,25 @@ export function GeneralChat() {
                                                                 return <span key={idx} className="bg-blue-500/20 text-blue-500 rounded px-0.5 font-medium">{part}</span>
                                                             }
                                                         }
-                                                        return part
+
+                                                        // Check for URLs
+                                                        const urlRegex = /(https?:\/\/[^\s]+)/g
+                                                        return part.split(urlRegex).map((subPart, subIdx) => {
+                                                            if (subPart.match(urlRegex)) {
+                                                                return (
+                                                                    <a
+                                                                        key={`${idx}-${subIdx}`}
+                                                                        href={subPart}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-primary hover:underline break-all"
+                                                                    >
+                                                                        {subPart}
+                                                                    </a>
+                                                                )
+                                                            }
+                                                            return <span key={`${idx}-${subIdx}`}>{subPart}</span>
+                                                        })
                                                     })
                                                 ) : msg.type === 'gif' ? (
                                                     <div className="mt-1">
@@ -416,7 +458,7 @@ export function GeneralChat() {
                         })}
                     </div>
                 </ScrollAreaPrimitive.Viewport>
-                <ScrollBar className="left-0 right-auto border-r border-l-0" />
+                <ScrollBar className="left-0 w-1 bg-transparent border-0" />
                 <ScrollAreaPrimitive.Corner />
             </ScrollAreaPrimitive.Root>
 

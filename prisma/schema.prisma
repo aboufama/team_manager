@@ -25,6 +25,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   chatTyping ChatTyping?
+  messages   GeneralChatMessage[]
   
   // Onboarding fields
   skills      String[]
@@ -252,10 +253,13 @@ model Notification {
   @@index([workspaceId, read])
 }
 
+
+
 model GeneralChatMessage {
   id           String   @id @default(cuid())
   content      String
   type         String   @default("text") // text, image, gif
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId     String
   authorName   String
   authorAvatar String?
