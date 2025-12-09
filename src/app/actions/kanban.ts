@@ -16,6 +16,8 @@ type CreateTaskInput = {
     assigneeId?: string
     assigneeIds?: string[]
     requireAttachment?: boolean
+    enableProgress?: boolean
+    progress?: number
     pushId?: string
 }
 
@@ -66,12 +68,13 @@ export async function createTask(input: CreateTaskInput) {
             }
         }
 
-
         const taskData: any = {
             title: title.trim(),
             description: description?.trim() || null,
             column: { connect: { id: targetColumnId } },
             requireAttachment: input.requireAttachment !== undefined ? input.requireAttachment : true,
+            enableProgress: input.enableProgress !== undefined ? input.enableProgress : false,
+            progress: input.progress || 0,
             startDate: startDate ? new Date(startDate) : null,
             endDate: endDate ? new Date(endDate) : null,
             push: pushId ? { connect: { id: pushId } } : undefined
@@ -392,6 +395,8 @@ export async function updateTaskDetails(taskId: string, input: Partial<CreateTas
                 startDate: input.startDate !== undefined ? (input.startDate ? new Date(input.startDate) : null) : undefined,
                 endDate: input.endDate !== undefined ? (input.endDate ? new Date(input.endDate) : null) : undefined,
                 requireAttachment: input.requireAttachment !== undefined ? input.requireAttachment : undefined,
+                enableProgress: input.enableProgress !== undefined ? input.enableProgress : undefined,
+                progress: input.progress !== undefined ? input.progress : undefined
             }
         })
 
@@ -522,4 +527,42 @@ export async function denyReviewTask(taskId: string, columnId: string, projectId
         revalidatePath('/dashboard')
     }
     return result
+}
+
+export async function updateTaskProgress(taskId: string, progress: number, projectId: string) {
+    try {
+        const user = await getCurrentUser()
+        if (!user) {
+            return { error: 'Unauthorized' }
+        }
+
+        const task = await prisma.task.findUnique({
+            where: { id: taskId },
+            include: { assignees: true }
+        })
+
+        if (!task) {
+            return { error: 'Task not found' }
+        }
+
+        // Verify assignment (only assignees can update progress)
+        const isAssignee = task.assigneeId === user.id || task.assignees.some(a => a.userId === user.id)
+        if (!isAssignee && user.role !== 'Admin') { // Admins can override
+            return { error: 'Only assignees can update progress' }
+        }
+
+        await prisma.task.update({
+            where: { id: taskId },
+            data: { progress }
+        })
+
+        // We might not want to revalidate on every drag update to avoid flicker, 
+        // but for consistency we can. The client updates optimistically.
+        // revalidatePath(`/dashboard/projects/${projectId}`)
+
+        return { success: true }
+    } catch (e) {
+        console.error("Update progress error:", e)
+        return { error: 'Failed to update progress' }
+    }
 }

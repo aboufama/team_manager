@@ -113,6 +113,8 @@ model Task {
   requireAttachment Boolean @default(true)
   instructionsFileUrl  String?  // Optional instructions file URL
   instructionsFileName String?  // Original filename
+  progress        Int      @default(0)
+  enableProgress  Boolean  @default(false)
   startDate       DateTime?
   endDate         DateTime?
   dueDate         DateTime?

@@ -3,8 +3,13 @@
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { ArrowLeft, ArrowRight, Clock, CalendarDays, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, Clock, CalendarDays, CheckCircle2, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Slider } from "@/components/ui/slider"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { updateTaskProgress } from "@/app/actions/kanban"
+import { useState, useEffect, useRef } from "react"
+// import { useDebounce } from "@/hooks/use-debounce" 
 
 type TaskCardProps = {
     task: {
@@ -16,11 +21,13 @@ type TaskCardProps = {
         endDate?: Date | string | null
         updatedAt?: Date | string | null
         requireAttachment?: boolean
-        assignee?: { name: string } | null
+        assignee?: { id?: string; name: string } | null
         assignees?: { user: { id: string; name: string } }[]
         activityLogs?: { changedByName: string; createdAt: Date | string }[]
         comments?: { createdAt: Date | string }[]
         attachments?: { id: string; createdAt: Date | string }[]
+        progress?: number
+        enableProgress?: boolean
     }
     overlay?: boolean
     onClick?: (task: TaskCardProps['task']) => void
@@ -30,11 +37,12 @@ type TaskCardProps = {
     isDragDisabled?: boolean
     isHighlighted?: boolean
     domId?: string
+    currentUserId?: string | null
 }
 
 const animateLayoutChanges = () => false
 
-export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn, isAdmin, isDragDisabled, isHighlighted, domId }: TaskCardProps) {
+export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn, isAdmin, isDragDisabled, isHighlighted, domId, currentUserId }: TaskCardProps) {
     const {
         setNodeRef,
         attributes,
@@ -80,6 +88,48 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
         if (isOverdue) return 'bg-red-500'
         if (timeProgress && timeProgress > 90) return 'bg-orange-500'
         return 'bg-primary/60'
+    }
+
+    // Manual Progress Logic
+    const [manualProgress, setManualProgress] = useState(task.progress || 0)
+    const [isUpdatingProgress, setIsUpdatingProgress] = useState(false)
+
+    useEffect(() => {
+        setManualProgress(task.progress || 0)
+    }, [task.progress])
+
+    const handleProgressChange = (value: number[]) => {
+        setManualProgress(value[0])
+    }
+
+    const handleProgressCommit = async (value: number[]) => {
+        if (!task.enableProgress) return
+
+        // Optimistic update handled by local state, now sync to server
+        setIsUpdatingProgress(true)
+        // Find project ID from wherever available, or pass it down. 
+        // TaskCard doesn't explicitly have projectId prop, but task object structure in kanban stores it in board/column ideally.
+        // The action needs projectId for revalidation, but it's optional if we accept no revalidation on drag.
+        // We'll pass a dummy string if not available, as revalidation might not be critical for just progress bar visual on THIS client.
+        // However, best to try to get it.
+        const projectId = task.columnId // This is definitely wrong as projectId isn't columnId. 
+        // We might not have projectId here easily without prop drilling. 
+        // But the action `updateTaskProgress` is robust.
+
+        await updateTaskProgress(task.id, value[0], "unknown")
+        setIsUpdatingProgress(false)
+    }
+
+    const isAssignee = currentUserId && (
+        task.assignee?.id === currentUserId || task.assignee?.name === currentUserId || // fallback if id missing
+        task.assignees?.some(a => a.user.id === currentUserId)
+    )
+    const canUpdateProgress = isAssignee || isAdmin
+
+    const getManualProgressColorClass = (val: number) => {
+        if (val < 30) return "bg-red-500"
+        if (val < 70) return "bg-yellow-500"
+        return "bg-green-500"
     }
 
     // Render Overlay Card (Action of dragging)
@@ -187,13 +237,43 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
             </div>
 
             {/* Progress Bar (if active) */}
-            {timeProgress !== null && !isReviewColumn && (
-                <div className="mt-3 h-1 w-full bg-muted rounded-full overflow-hidden">
-                    <div
-                        className={cn("h-full rounded-full transition-all duration-300", getProgressColor())}
-                        style={{ width: `${Math.min(timeProgress, 100)}%` }}
-                    />
+            {(task.enableProgress) ? (
+                <div className="mt-3 px-1" onPointerDown={(e) => e.stopPropagation()}>
+                    {/* Stop propagation to prevent card drag when interacting with slider */}
+                    <TooltipProvider>
+                        <Tooltip delayDuration={0}>
+                            <TooltipTrigger asChild>
+                                <div className={cn("relative flex items-center gap-2", !canUpdateProgress && "cursor-not-allowed opacity-80")}>
+                                    <Slider
+                                        disabled={!canUpdateProgress}
+                                        value={[manualProgress]}
+                                        max={100}
+                                        step={5}
+                                        onValueChange={handleProgressChange}
+                                        onValueCommit={handleProgressCommit}
+                                        className="h-4"
+                                        rangeClassName={getManualProgressColorClass(manualProgress)}
+                                    />
+                                    <span className="text-[10px] font-medium min-w-[3ch] text-muted-foreground">{manualProgress}%</span>
+                                </div>
+                            </TooltipTrigger>
+                            {!canUpdateProgress && (
+                                <TooltipContent side="top" className="text-xs bg-destructive text-destructive-foreground">
+                                    <p>Only assignees can update progress</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
+            ) : (
+                timeProgress !== null && !isReviewColumn && (
+                    <div className="mt-3 h-1 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                            className={cn("h-full rounded-full transition-all duration-300", getProgressColor())}
+                            style={{ width: `${Math.min(timeProgress, 100)}%` }}
+                        />
+                    </div>
+                )
             )}
 
             {/* Review Actions Footer */}

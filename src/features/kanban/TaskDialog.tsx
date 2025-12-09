@@ -27,6 +27,7 @@ type TaskType = {
     assigneeId?: string | null
     assignees?: { user: { id: string; name: string } }[]
     requireAttachment?: boolean
+    enableProgress?: boolean
     instructionsFileUrl?: string | null
     instructionsFileName?: string | null
     startDate?: Date | string | null
@@ -87,6 +88,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
     const [startDate, setStartDate] = useState<string>(formatDate(task?.startDate) || today)
     const [endDate, setEndDate] = useState<string>(formatDate(task?.endDate) || "")
     const [requireAttachment, setRequireAttachment] = useState<boolean>(task?.requireAttachment !== undefined ? task.requireAttachment : true)
+    const [enableProgress, setEnableProgress] = useState<boolean>(task?.enableProgress !== undefined ? task.enableProgress : false)
     const [instructionsFile, setInstructionsFile] = useState<File | null>(null)
     const [existingInstructionsFile, setExistingInstructionsFile] = useState<{ url: string; name: string } | null>(null)
     const [isUploadingInstructions, setIsUploadingInstructions] = useState(false)
@@ -111,6 +113,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                 setStartDate(formatDate(task.startDate) || today)
                 setEndDate(formatDate(task.endDate) || "")
                 setRequireAttachment(task.requireAttachment !== undefined ? task.requireAttachment : true)
+                setEnableProgress(task.enableProgress !== undefined ? task.enableProgress : false)
                 if (task.instructionsFileUrl && task.instructionsFileName) {
                     setExistingInstructionsFile({ url: task.instructionsFileUrl, name: task.instructionsFileName })
                 } else {
@@ -127,6 +130,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                 setStartDate(today)
                 setEndDate("")
                 setRequireAttachment(true)
+                setEnableProgress(false)
             }
         }
     }, [task, today, open])
@@ -190,6 +194,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                         startDate,
                         endDate,
                         requireAttachment,
+                        enableProgress,
                         projectId
                     })
 
@@ -233,6 +238,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                         startDate,
                         endDate,
                         requireAttachment,
+                        enableProgress,
                         columnId: columnId!,
                         projectId,
                         pushId: pushId || undefined
@@ -458,7 +464,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                 />
                             </div>
 
-                            <div className="pt-2 pb-2">
+                            <div className="pt-2 pb-2 space-y-3">
                                 <div className="flex items-center space-x-2 border p-3 rounded-lg bg-muted/20">
                                     <Checkbox
                                         id="requireAttachment"
@@ -474,6 +480,24 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                         </label>
                                         <p className="text-xs text-muted-foreground">
                                             Assignees must upload a file before marking this task as done.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2 border p-3 rounded-lg bg-muted/20">
+                                    <Checkbox
+                                        id="enableProgress"
+                                        checked={enableProgress}
+                                        onCheckedChange={(checked) => setEnableProgress(checked === true)}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="enableProgress"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                        >
+                                            Enable Manual Progress Tracking
+                                        </label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Allow assignees to manually drag a slider to update progress %.
                                         </p>
                                     </div>
                                 </div>

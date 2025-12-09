@@ -90,6 +90,7 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
     const [columns, setColumns] = useState<ColumnData[]>(board.columns)
     const [activeTask, setActiveTask] = useState<Task | null>(null)
     const [userRole, setUserRole] = useState<string>('Member')
+    const [userId, setUserId] = useState<string | null>(null)
     const [mounted, setMounted] = useState(false)
     const [creatingColumnId, setCreatingColumnId] = useState<string | null>(null)
     const [creatingPushId, setCreatingPushId] = useState<string | null>(null)
@@ -135,8 +136,10 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
             const res = await fetch('/api/auth/role')
             const data = await res.json()
             setUserRole(data.role || 'Member')
+            setUserId(data.id || null)
         } catch {
             setUserRole('Member')
+            setUserId(null)
         }
     }, [])
 
@@ -639,6 +642,7 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
                     isFlashing={flashingColumnId === `${pushId || 'backlog'}::${col.id}`}
                     pushId={pushId}
                     highlightTaskId={highlightTaskId}
+                    currentUserId={userId}
                 />
             ))}
         </div>
