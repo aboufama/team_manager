@@ -98,3 +98,27 @@ export async function deleteAccount() {
         return { error: "Failed to delete account" }
     }
 }
+
+import { revalidatePath } from "next/cache"
+
+export async function updateUserDeepDetails(skills: string[], interests: string) {
+    const user = await getCurrentUser()
+    if (!user) return { error: "Not authenticated" }
+
+    try {
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                skills: skills,
+                interests: interests.trim()
+            }
+        })
+
+        revalidatePath('/workspaces')
+
+        return { success: true }
+    } catch (error) {
+        console.error("Update details error:", error)
+        return { error: "Failed to update profile details" }
+    }
+}

@@ -4,12 +4,14 @@ import { useState, useTransition, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Plus, Users, Building2, Loader2, ArrowRight, FolderKanban, CheckCircle, Info, LogOut, Pencil, Check, X } from "lucide-react"
+import { Plus, Users, Building2, Loader2, ArrowRight, FolderKanban, CheckCircle, Info, LogOut, Settings, User as UserIcon, X } from "lucide-react"
 import { createWorkspace, joinWorkspace, switchWorkspace } from "@/app/actions/setup"
-import { updateDisplayName, deleteAccount } from "@/app/actions/user-settings"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { updateDisplayName, deleteAccount, updateUserDeepDetails } from "@/app/actions/user-settings"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Textarea } from "@/components/ui/textarea"
 
 export function WorkspaceSelector({ user }: { user: any }) {
     const [isPending, startTransition] = useTransition()
@@ -18,24 +20,21 @@ export function WorkspaceSelector({ user }: { user: any }) {
     const [createOpen, setCreateOpen] = useState(false)
     const [joinOpen, setJoinOpen] = useState(false)
 
-    // Name editing state
-    const [isEditingName, setIsEditingName] = useState(false)
-    const [editedName, setEditedName] = useState(user.name || '')
-    const [nameError, setNameError] = useState<string | null>(null)
-    const [displayName, setDisplayName] = useState(user.name || '')
-    const [showNameWarning, setShowNameWarning] = useState(false)
+    // Profile Edit State
+    const [profileOpen, setProfileOpen] = useState(false)
+    const [editName, setEditName] = useState(user.name || '')
+    const [editSkills, setEditSkills] = useState<string[]>(user.skills || [])
+    const [editInterests, setEditInterests] = useState(user.interests || '')
+    const [currentSkill, setCurrentSkill] = useState("")
+    const [profileError, setProfileError] = useState<string | null>(null)
 
-    // Delete Account state
+    // Delete Account State
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
     const [deleteConfirmation, setDeleteConfirmation] = useState("")
 
-    useEffect(() => {
-        if (user.name && !user.name.trim().includes(' ')) {
-            setShowNameWarning(true)
-        }
-    }, [user.name])
+    const displayName = user.name || ''
 
-    // Custom notification state - now includes action to run after dismiss
+    // Custom notification state
     const [notification, setNotification] = useState<{
         title: string
         message: string
@@ -100,55 +99,58 @@ export function WorkspaceSelector({ user }: { user: any }) {
         })
     }
 
-    const handleSaveName = async () => {
-        if (!editedName.trim()) {
-            setNameError("Name cannot be empty")
+    const handleSaveProfile = async () => {
+        if (!editName.trim()) {
+            setProfileError("Name cannot be empty")
             return
         }
-        if (!editedName.trim().includes(' ')) {
-            setNameError("Please enter your full name (First and Last name)")
+        if (!editName.trim().includes(' ')) {
+            setProfileError("Please enter your full name (First and Last name)")
             return
         }
-        setNameError(null)
+
+        setProfileError(null)
         startTransition(async () => {
-            const res = await updateDisplayName(editedName.trim())
-            if (res.error) {
-                setNameError(res.error)
-            } else {
-                setDisplayName(editedName.trim())
-                setIsEditingName(false)
-                setShowNameWarning(false)
+            // Update Name
+            const nameRes = await updateDisplayName(editName.trim())
+            if (nameRes.error) {
+                setProfileError(nameRes.error)
+                return
             }
+
+            // Update Details
+            const detailsRes = await updateUserDeepDetails(editSkills, editInterests)
+            if (detailsRes.error) {
+                setProfileError(detailsRes.error)
+                return
+            }
+
+            setProfileOpen(false)
+            setNotification({
+                title: "Profile Updated",
+                message: "Your profile details have been saved.",
+                type: "success"
+            })
         })
     }
 
-    const handleCancelEdit = () => {
-        setEditedName(displayName)
-        setIsEditingName(false)
-        setNameError(null)
+    const handleAddSkill = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            const trimmed = currentSkill.trim()
+            if (trimmed && !editSkills.includes(trimmed)) {
+                setEditSkills([...editSkills, trimmed])
+                setCurrentSkill("")
+            }
+        }
+    }
+
+    const removeSkill = (skillToRemove: string) => {
+        setEditSkills(editSkills.filter(s => s !== skillToRemove))
     }
 
     return (
         <div className="w-full max-w-5xl space-y-6 md:space-y-8 animate-in fade-in zoom-in-95 duration-500 px-4 md:px-0">
-            {showNameWarning && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-md flex items-center justify-between gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                        <Info className="w-4 h-4 text-amber-600" />
-                        <p>We've updated our policy. Please update your display name to your <strong>Full Name</strong> (First & Last) so your team can identify you.</p>
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-white border-amber-200 hover:bg-amber-100 text-amber-800 h-8 whitespace-nowrap"
-                        onClick={() => {
-                            setIsEditingName(true)
-                            setEditedName(displayName) // ensure current name is in input
-                        }}
-                    >
-                        Update Name
-                    </Button>
-                </div>
-            )}
             {/* Header */}
             <div className="flex flex-col gap-4 md:gap-6 pb-4 md:pb-6 border-b border-zinc-200">
                 <div className="flex items-center gap-3 md:gap-4">
@@ -158,52 +160,42 @@ export function WorkspaceSelector({ user }: { user: any }) {
                     </Avatar>
                     <div className="space-y-0.5 md:space-y-1 flex-1">
                         <h2 className="text-xl md:text-3xl font-bold tracking-tight text-zinc-900">Your Workspaces</h2>
-                        {isEditingName ? (
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    value={editedName}
-                                    onChange={(e) => setEditedName(e.target.value)}
-                                    className="h-7 text-sm max-w-[200px]"
-                                    placeholder="First Last"
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleSaveName()
-                                        if (e.key === 'Escape') handleCancelEdit()
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm md:text-base text-zinc-500 font-medium">Welcome back, {displayName}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-zinc-500 hover:text-zinc-900">
+                                    <Settings className="w-5 h-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                                    <UserIcon className="w-4 h-4 mr-2" /> Edit Profile
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                    fetch('/api/auth/logout', { method: 'POST' })
+                                        .then(() => window.location.href = '/')
+                                }}>
+                                    <LogOut className="w-4 h-4 mr-2" /> Log Out
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className="text-red-600 focus:text-red-600"
+                                    onClick={() => {
+                                        setDeleteConfirmation("")
+                                        setDeleteConfirmOpen(true)
                                     }}
-                                />
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-green-600 hover:text-green-700"
-                                    onClick={handleSaveName}
-                                    disabled={isPending}
                                 >
-                                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                </Button>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-zinc-500 hover:text-zinc-700"
-                                    onClick={handleCancelEdit}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <p className="text-sm md:text-base text-zinc-500 font-medium">Welcome back, {displayName}</p>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 text-zinc-400 hover:text-zinc-600"
-                                    onClick={() => setIsEditingName(true)}
-                                    title="Edit display name"
-                                >
-                                    <Pencil className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        )}
-                        {nameError && <p className="text-xs text-red-500">{nameError}</p>}
+                                    Delete Account
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
@@ -213,26 +205,6 @@ export function WorkspaceSelector({ user }: { user: any }) {
                     </Button>
                     <Button onClick={() => setJoinOpen(true)} variant="outline" className="gap-2 shadow-sm flex-1 md:flex-none text-sm">
                         <Users className="w-4 h-4" /> Join
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        className="gap-2 text-zinc-500 hover:text-red-600 text-sm"
-                        onClick={() => {
-                            fetch('/api/auth/logout', { method: 'POST' })
-                                .then(() => window.location.href = '/')
-                        }}
-                    >
-                        <LogOut className="w-4 h-4" /> <span className="hidden md:inline">Log Out</span>
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        className="gap-2 text-zinc-400 hover:text-red-700 hover:bg-red-50 text-sm"
-                        onClick={() => {
-                            setDeleteConfirmation("")
-                            setDeleteConfirmOpen(true)
-                        }}
-                    >
-                        <span className="hidden md:inline">Delete Account</span>
                     </Button>
                 </div>
             </div>
@@ -324,34 +296,55 @@ export function WorkspaceSelector({ user }: { user: any }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Custom Notification Dialog */}
-            <Dialog open={!!notification} onOpenChange={(open) => { if (!open) handleNotificationDismiss() }}>
-                <DialogContent className="sm:max-w-md">
+            {/* Profile Edit Dialog */}
+            <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <div className="flex items-center gap-3">
-                            {notification?.type === 'success' ? (
-                                <div className="p-2 rounded-full bg-green-100">
-                                    <CheckCircle className="w-6 h-6 text-green-600" />
-                                </div>
-                            ) : (
-                                <div className="p-2 rounded-full bg-blue-100">
-                                    <Info className="w-6 h-6 text-blue-600" />
-                                </div>
-                            )}
-                            <DialogTitle>{notification?.title}</DialogTitle>
-                        </div>
-                        <DialogDescription className="pt-2">
-                            {notification?.message}
-                        </DialogDescription>
+                        <DialogTitle>Edit Profile</DialogTitle>
+                        <DialogDescription>Make changes to your profile here. Click save when you're done.</DialogDescription>
                     </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-name">Display Name</Label>
+                            <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Skills</Label>
+                            <div className="bg-zinc-50 border rounded-md p-2 flex flex-wrap gap-2 min-h-[40px]">
+                                {editSkills.map(skill => (
+                                    <span key={skill} className="bg-white border text-zinc-800 text-xs px-2 py-1 rounded flex items-center gap-1">
+                                        {skill}
+                                        <button onClick={() => removeSkill(skill)} className="hover:text-red-500">×</button>
+                                    </span>
+                                ))}
+                                <input
+                                    className="bg-transparent border-none outline-none text-sm flex-1 min-w-[80px]"
+                                    placeholder="Add skill..."
+                                    value={currentSkill}
+                                    onChange={(e) => setCurrentSkill(e.target.value)}
+                                    onKeyDown={handleAddSkill}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-interests">Bio / Interests</Label>
+                            <Textarea
+                                id="edit-interests"
+                                value={editInterests}
+                                onChange={(e) => setEditInterests(e.target.value)}
+                                className="h-24 resize-none"
+                            />
+                        </div>
+                        {profileError && <p className="text-sm text-red-500">{profileError}</p>}
+                    </div>
                     <DialogFooter>
-                        <Button onClick={handleNotificationDismiss} className="w-full">
-                            Continue
+                        <Button type="button" variant="ghost" onClick={() => setProfileOpen(false)}>Cancel</Button>
+                        <Button type="button" onClick={handleSaveProfile} disabled={isPending}>
+                            {isPending ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
 
             {/* Confirm Delete Dialog */}
             <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
@@ -389,6 +382,34 @@ export function WorkspaceSelector({ user }: { user: any }) {
                             </Button>
                         </div>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Custom Notification Dialog */}
+            <Dialog open={!!notification} onOpenChange={(open) => { if (!open) handleNotificationDismiss() }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3">
+                            {notification?.type === 'success' ? (
+                                <div className="p-2 rounded-full bg-green-100">
+                                    <CheckCircle className="w-6 h-6 text-green-600" />
+                                </div>
+                            ) : (
+                                <div className="p-2 rounded-full bg-blue-100">
+                                    <Info className="w-6 h-6 text-blue-600" />
+                                </div>
+                            )}
+                            <DialogTitle>{notification?.title}</DialogTitle>
+                        </div>
+                        <DialogDescription className="pt-2">
+                            {notification?.message}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={handleNotificationDismiss} className="w-full">
+                            Continue
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
