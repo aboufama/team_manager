@@ -30,14 +30,11 @@ export default async function LandingPage() {
 
                 {/* Hero Section */}
                 <div className="space-y-4">
-                    <div className="inline-flex items-center justify-center p-3 mb-4 bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-zinc-200 ring-1 ring-zinc-200/50">
-                        <div className="w-8 h-8 rounded-lg bg-zinc-900 shadow-inner" />
-                    </div>
                     <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-zinc-900 pb-2">
                         CuPI
                     </h1>
-                    <p className="text-lg md:text-xl text-zinc-500 font-medium max-w-sm mx-auto leading-relaxed">
-                        The operating system for <br /> <span className="text-zinc-900 font-semibold">Physical Intelligence</span>.
+                    <p className="text-lg md:text-xl text-zinc-500 font-medium max-w-lg mx-auto leading-relaxed">
+                        Team management solution developed by <br /> <span className="text-zinc-900 font-semibold">Cornell Physical Intelligence</span>
                     </p>
                 </div>
 
@@ -102,11 +99,6 @@ export default async function LandingPage() {
             </div>
 
             <footer className="absolute bottom-6 z-40 text-center space-y-4 px-4 w-full">
-                <div className="flex items-center justify-center gap-6">
-                    <a className="text-zinc-400 hover:text-zinc-600 transition-colors text-sm font-medium" href="#">Privacy</a>
-                    <a className="text-zinc-400 hover:text-zinc-600 transition-colors text-sm font-medium" href="#">Terms</a>
-                    <a className="text-zinc-400 hover:text-zinc-600 transition-colors text-sm font-medium" href="mailto:cuphysicalintelligence@cornell.org">Contact</a>
-                </div>
                 <p className="text-[10px] text-zinc-400 max-w-md mx-auto leading-relaxed opacity-60">
                     This organization is not yet a registered student organization of Cornell University.
                     <br />
