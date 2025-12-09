@@ -7,13 +7,30 @@ import { getCurrentUser } from '@/lib/auth'
 export async function updateUserRole(userId: string, newRole: string) {
     const currentUser = await getCurrentUser()
     if (!currentUser) {
-        return { error: 'Unauthorized: Only Admins can change roles' }
+        return { error: 'Unauthorized: Not authenticated' }
     }
 
-    // ONLY Admin can change roles
-    // Team Leads and Members cannot change roles
-    if (currentUser.role !== 'Admin') {
-        return { error: 'Unauthorized: Only Admins can change roles' }
+    if (currentUser.role !== 'Admin' && currentUser.role !== 'Team Lead') {
+        return { error: 'Unauthorized: Only Admins and Team Leads can change roles' }
+    }
+
+    const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, workspaceId: true }
+    })
+
+    if (!targetUser) {
+        return { error: 'User not found' }
+    }
+
+    // PROTECT ADMINS: Only Admins can change role of other Admins
+    if (targetUser.role === 'Admin' && currentUser.role !== 'Admin') {
+        return { error: 'Unauthorized: Only Admins can modify other Admins' }
+    }
+
+    // PROTECT ADMIN ROLE PROMOTION: Only Admins can promote to Admin
+    if (newRole === 'Admin' && currentUser.role !== 'Admin') {
+        return { error: 'Unauthorized: Only Admins can promote users to Admin' }
     }
 
     // Check if admin is trying to demote themselves
@@ -52,12 +69,12 @@ export async function updateUserRole(userId: string, newRole: string) {
 export async function updateUserProjects(userId: string, projectIds: string[]) {
     const currentUser = await getCurrentUser()
     if (!currentUser) {
-        return { error: 'Unauthorized: Only Admins can change project assignments' }
+        return { error: 'Unauthorized: Not authenticated' }
     }
 
-    // ONLY Admin can change project assignments
-    if (currentUser.role !== 'Admin') {
-        return { error: 'Unauthorized: Only Admins can change project assignments' }
+    // Allow Team Leads to assign projects too
+    if (currentUser.role !== 'Admin' && currentUser.role !== 'Team Lead') {
+        return { error: 'Unauthorized: Only Admins and Team Leads can change project assignments' }
     }
 
     try {
@@ -88,28 +105,44 @@ export async function updateUserProjects(userId: string, projectIds: string[]) {
 export async function removeUserFromWorkspace(userId: string) {
     const currentUser = await getCurrentUser()
     if (!currentUser) {
-        return { error: 'Unauthorized: Only Admins can remove members' }
+        return { error: 'Unauthorized: Not authenticated' }
     }
 
-    if (currentUser.role !== 'Admin') {
-        return { error: 'Unauthorized: Only Admins can remove members' }
+    if (currentUser.role !== 'Admin' && currentUser.role !== 'Team Lead') {
+        return { error: 'Unauthorized: Only Admins and Team Leads can remove members' }
+    }
+
+    const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, workspaceId: true }
+    })
+
+    if (!targetUser) {
+        return { error: 'User not found' }
+    }
+
+    // PROTECT ADMINS: Only Admins can remove other Admins
+    if (targetUser.role === 'Admin' && currentUser.role !== 'Admin') {
+        return { error: 'Unauthorized: Only Admins can remove other Admins' }
     }
 
     // Check if user is removing themselves
     if (currentUser.id === userId) {
         // Count how many admins exist in the workspace
-        const adminCount = await prisma.user.count({
-            where: {
-                role: 'Admin',
-                workspaceId: currentUser.workspaceId
-            }
-        })
+        if (currentUser.role === 'Admin') {
+            const adminCount = await prisma.user.count({
+                where: {
+                    role: 'Admin',
+                    workspaceId: currentUser.workspaceId
+                }
+            })
 
-        // If this is the only admin, prevent leaving/removal
-        if (adminCount <= 1) {
-            return {
-                error: 'Cannot leave workspace: You are the only admin. Please assign another admin first.',
-                requiresAdminAssignment: true
+            // If this is the only admin, prevent leaving/removal
+            if (adminCount <= 1) {
+                return {
+                    error: 'Cannot leave workspace: You are the only admin. Please assign another admin first.',
+                    requiresAdminAssignment: true
+                }
             }
         }
     }
@@ -127,13 +160,6 @@ export async function removeUserFromWorkspace(userId: string) {
             })
 
             // Also clear user's workspaceId and role if this Was their main workspace
-            // This logic depends on whether User.workspaceId is 'current active' or 'only'.
-            // Based on schema, User has workspaceId directly.
-            // If we remove them from workspace member list, we should probably set their active workspaceId to null?
-            // Or rely on them switching.
-            // Let's set it to null to be safe if it matches.
-
-            const targetUser = await prisma.user.findUnique({ where: { id: userId } })
             if (targetUser?.workspaceId === currentUser.workspaceId) {
                 await prisma.user.update({
                     where: { id: userId },
