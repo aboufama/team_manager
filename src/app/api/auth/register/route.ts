@@ -63,6 +63,7 @@ export async function POST(request: Request) {
                 name: name.trim(),
                 email: `discord_${discordUser.id}@discord.user`,
                 avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
+                discordId: discordUser.id,
                 role: role,
                 skills: skills || [],
                 interests: interests || null,
