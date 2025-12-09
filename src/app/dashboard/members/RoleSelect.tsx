@@ -11,19 +11,19 @@ import { updateUserRole } from "@/app/actions/users"
 import { useState, useTransition } from "react"
 import { useToast } from "@/components/ui/use-toast"
 
-export function RoleSelect({ userId, currentRole }: { userId: string, currentRole: string }) {
+export function RoleSelect({ userId, currentRole, disabled }: { userId: string, currentRole: string, disabled?: boolean }) {
     const [isPending, startTransition] = useTransition()
     const [role, setRole] = useState(currentRole)
     const { toast } = useToast()
 
     function handleValueChange(newRole: string) {
         if (newRole === role) return
-        
+
         setRole(newRole) // Optimistic update
-        
+
         startTransition(async () => {
             const result = await updateUserRole(userId, newRole)
-            
+
             if (result?.error) {
                 setRole(currentRole) // Revert on error
                 toast({
@@ -42,7 +42,7 @@ export function RoleSelect({ userId, currentRole }: { userId: string, currentRol
     }
 
     return (
-        <Select value={role} onValueChange={handleValueChange} disabled={isPending}>
+        <Select value={role} onValueChange={handleValueChange} disabled={isPending || disabled}>
             <SelectTrigger className="w-[140px] ml-auto">
                 <SelectValue placeholder="Select Role" />
             </SelectTrigger>

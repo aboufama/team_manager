@@ -21,11 +21,13 @@ type Project = {
 export function ProjectSelect({
     userId,
     currentProjectIds,
-    allProjects
+    allProjects,
+    disabled
 }: {
     userId: string
     currentProjectIds: string[]
     allProjects: Project[]
+    disabled?: boolean
 }) {
     const [isPending, startTransition] = useTransition()
     const [open, setOpen] = useState(false)
@@ -78,7 +80,7 @@ export function ProjectSelect({
                 <Button
                     variant="outline"
                     className="w-[140px] justify-between"
-                    disabled={isPending}
+                    disabled={isPending || disabled}
                 >
                     <span className="truncate">{displayText}</span>
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

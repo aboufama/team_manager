@@ -72,18 +72,17 @@ export default async function MembersPage() {
                                             <span className="font-medium">{user.name}</span>
                                             {isCurrentUser && <Badge variant="secondary" className="text-xs">You</Badge>}
                                         </div>
-                                        {canChangeRoles && <RoleSelect userId={user.id} currentRole={user.role} />}
+                                        <RoleSelect userId={user.id} currentRole={user.role} disabled={!canChangeRoles} />
                                     </div>
                                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                                         <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
-                                        {canChangeRoles && (
-                                            <ProjectSelect
-                                                userId={user.id}
-                                                currentProjectIds={assignedProjectIds}
-                                                allProjects={allProjects}
-                                            />
-                                        )}
+                                        <ProjectSelect
+                                            userId={user.id}
+                                            currentProjectIds={assignedProjectIds}
+                                            allProjects={allProjects}
+                                            disabled={!canChangeRoles}
+                                        />
                                     </div>
                                 </div>
                             )
@@ -98,12 +97,8 @@ export default async function MembersPage() {
                                     <TableHead>Name</TableHead>
                                     <TableHead>Email</TableHead>
                                     <TableHead>Joined</TableHead>
-                                    {canChangeRoles && (
-                                        <>
-                                            <TableHead className="text-right">Role</TableHead>
-                                            <TableHead className="text-right">Projects</TableHead>
-                                        </>
-                                    )}
+                                    <TableHead className="text-right">Role</TableHead>
+                                    <TableHead className="text-right">Projects</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -123,27 +118,26 @@ export default async function MembersPage() {
                                             </TableCell>
                                             <TableCell>{user.email}</TableCell>
                                             <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                                            {canChangeRoles && (
-                                                <>
-                                                    <TableCell className="text-right">
-                                                        <RoleSelect userId={user.id} currentRole={user.role} />
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <ProjectSelect
-                                                                userId={user.id}
-                                                                currentProjectIds={assignedProjectIds}
-                                                                allProjects={allProjects}
-                                                            />
-                                                            <MemberActions
-                                                                userId={user.id}
-                                                                isCurrentUser={isCurrentUser}
-                                                                canRemove={canChangeRoles}
-                                                            />
-                                                        </div>
-                                                    </TableCell>
-                                                </>
-                                            )}
+                                            <TableCell className="text-right">
+                                                <RoleSelect userId={user.id} currentRole={user.role} disabled={!canChangeRoles} />
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <ProjectSelect
+                                                        userId={user.id}
+                                                        currentProjectIds={assignedProjectIds}
+                                                        allProjects={allProjects}
+                                                        disabled={!canChangeRoles}
+                                                    />
+                                                    {canChangeRoles && (
+                                                        <MemberActions
+                                                            userId={user.id}
+                                                            isCurrentUser={isCurrentUser}
+                                                            canRemove={canChangeRoles}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     )
                                 })}

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Send, Smile, Loader2, ChevronDown } from "lucide-react"
+import { Send, Smile, Loader2, ChevronDown, AtSign } from "lucide-react"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area" // Add this import
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,27 @@ export function GeneralChat() {
     // Mention state
     const [mentionQuery, setMentionQuery] = React.useState<string | null>(null)
     const [mentionIndex, setMentionIndex] = React.useState<number>(-1)
+
+    // Derived mentions list
+    const mentions = React.useMemo(() => {
+        if (!currentUser) return []
+        return messages.filter(m =>
+            m.content.includes(`@${currentUser.name}`) ||
+            m.content.includes("@everyone")
+        ).reverse() // Newest first
+    }, [messages, currentUser])
+
+    const scrollToMessage = (messageId: string) => {
+        const element = document.getElementById(`msg-${messageId}`)
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            // Optional: Add a temporary highlight flash
+            element.classList.add('bg-primary/10')
+            setTimeout(() => {
+                element.classList.remove('bg-primary/10')
+            }, 2000)
+        }
+    }
 
     // Retrieve user identity & members
     React.useEffect(() => {
@@ -259,6 +280,60 @@ export function GeneralChat() {
 
     return (
         <div className="flex flex-col h-full w-full bg-background text-foreground overflow-hidden relative">
+            {/* Chat Header with Mentions */}
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur z-10 shrink-0 h-14">
+                <span className="font-semibold text-sm">General Chat</span>
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 relative hover:bg-muted">
+                            <AtSign className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            {mentions.length > 0 && (
+                                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                            )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="end">
+                        <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/50">
+                            <span className="font-semibold text-xs">Recent Mentions</span>
+                            <span className="text-[10px] text-muted-foreground">{mentions.length} found</span>
+                        </div>
+                        <ScrollArea className="h-[300px]">
+                            {mentions.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                                    <AtSign className="h-8 w-8 mb-2 opacity-20" />
+                                    <span className="text-xs">No mentions found</span>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col">
+                                    {mentions.map(msg => (
+                                        <button
+                                            key={`mention-${msg.id}`}
+                                            className="flex flex-col gap-1 p-3 text-left hover:bg-muted/50 border-b last:border-0 transition-colors"
+                                            onClick={() => scrollToMessage(msg.id)}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="w-5 h-5">
+                                                    <AvatarImage src={msg.authorAvatar || undefined} />
+                                                    <AvatarFallback className="text-[8px]">{msg.authorName[0]}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="font-medium text-xs truncate">{msg.authorName}</span>
+                                                <span className="text-[10px] text-muted-foreground ml-auto">
+                                                    {new Date(msg.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground line-clamp-2 pl-7">
+                                                {msg.content}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </PopoverContent>
+                </Popover>
+            </div>
+
             {/* Messages Area */}
             <ScrollAreaPrimitive.Root className="flex-1 bg-background px-1 h-0 relative overflow-hidden">
                 <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overscroll-contain" ref={scrollRef as any}>
@@ -272,6 +347,7 @@ export function GeneralChat() {
                             return (
                                 <div
                                     key={msg.id}
+                                    id={`msg-${msg.id}`}
                                     className={cn(
                                         "px-2 py-0.5 group flex items-start gap-2 relative",
                                         !isGrouped && "mt-2",
