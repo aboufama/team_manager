@@ -692,7 +692,7 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
                                                     {isComplete && (
                                                         <span className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 rounded-full ring-1 ring-inset ring-green-600/20">
                                                             <CheckCircle2 className="w-3.5 h-3.5" />
-                                                            {push.endDate ? `Completed on ${new Date(push.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : 'Completed'}
+                                                            {push.endDate && push.endDate !== 'null' ? `Completed on ${new Date(push.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}` : 'Completed!'}
                                                         </span>
                                                     )}
                                                     {!isComplete && (

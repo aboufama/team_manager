@@ -66,9 +66,15 @@ export async function POST(request: Request) {
                 }
             })
 
-            if (memberIds && Array.isArray(memberIds) && memberIds.length > 0) {
+            // Ensure lead is added as a member
+            let uniqueMemberIds = new Set(memberIds || [])
+            if (leadId) {
+                uniqueMemberIds.add(leadId)
+            }
+
+            if (uniqueMemberIds.size > 0) {
                 await tx.projectMember.createMany({
-                    data: memberIds.map((userId: string) => ({
+                    data: (Array.from(uniqueMemberIds) as string[]).map((userId) => ({
                         projectId: p.id,
                         userId
                     }))
