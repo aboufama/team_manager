@@ -38,11 +38,15 @@ type TaskCardProps = {
     isHighlighted?: boolean
     domId?: string
     currentUserId?: string | null
+    projectId?: string
 }
 
 const animateLayoutChanges = () => false
 
-export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn, isAdmin, isDragDisabled, isHighlighted, domId, currentUserId }: TaskCardProps) {
+import { useRouter } from "next/navigation"
+
+export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn, isAdmin, isDragDisabled, isHighlighted, domId, currentUserId, projectId }: TaskCardProps) {
+    const router = useRouter()
     const {
         setNodeRef,
         attributes,
@@ -105,18 +109,13 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
     const handleProgressCommit = async (value: number[]) => {
         if (!task.enableProgress) return
 
-        // Optimistic update handled by local state, now sync to server
         setIsUpdatingProgress(true)
-        // Find project ID from wherever available, or pass it down. 
-        // TaskCard doesn't explicitly have projectId prop, but task object structure in kanban stores it in board/column ideally.
-        // The action needs projectId for revalidation, but it's optional if we accept no revalidation on drag.
-        // We'll pass a dummy string if not available, as revalidation might not be critical for just progress bar visual on THIS client.
-        // However, best to try to get it.
-        const projectId = task.columnId // This is definitely wrong as projectId isn't columnId. 
-        // We might not have projectId here easily without prop drilling. 
-        // But the action `updateTaskProgress` is robust.
+        const result = await updateTaskProgress(task.id, value[0], projectId || "unknown")
 
-        await updateTaskProgress(task.id, value[0], "unknown")
+        if (result.movedToReview) {
+            router.refresh()
+        }
+
         setIsUpdatingProgress(false)
     }
 
@@ -238,7 +237,11 @@ export function TaskCard({ task, overlay, onClick, isReviewColumn, isDoneColumn,
 
             {/* Progress Bar (if active) */}
             {(task.enableProgress) ? (
-                <div className="mt-3 px-1" onPointerDown={(e) => e.stopPropagation()}>
+                <div
+                    className="mt-3 px-1"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                >
                     {/* Stop propagation to prevent card drag when interacting with slider */}
                     <TooltipProvider>
                         <Tooltip delayDuration={0}>

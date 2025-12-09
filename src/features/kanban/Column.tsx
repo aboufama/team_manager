@@ -41,7 +41,7 @@ type ColumnProps = {
     currentUserId?: string | null
 }
 
-export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewColumn, userRole, isFlashing, pushId, highlightTaskId, currentUserId }: ColumnProps) {
+export function Column({ column, projectId, onEditTask, onAddTask, isDoneColumn, isReviewColumn, userRole, isFlashing, pushId, highlightTaskId, currentUserId }: ColumnProps) {
     const isAdmin = userRole === 'Admin' || userRole === 'Team Lead'
     // Members can drop INTO Review, but only Done is fully restricted for non-admins
     const isDropDisabled = !isAdmin && isDoneColumn
@@ -100,6 +100,7 @@ export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewCo
                             isHighlighted={task.id === highlightTaskId}
                             domId={`task-card-${task.id}`}
                             currentUserId={currentUserId}
+                            projectId={projectId}
                         />
                     ))}
                 </SortableContext>

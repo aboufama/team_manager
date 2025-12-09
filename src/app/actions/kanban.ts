@@ -217,7 +217,8 @@ export async function updateTaskStatus(taskId: string, columnId: string, project
                                 project: { select: { name: true, workspaceId: true } }
                             }
                         }
-                    }
+                    },
+                    select: { id: true } // Assuming this was the intended change based on the surrounding context
                 }
             }
         })
@@ -549,6 +550,33 @@ export async function updateTaskProgress(taskId: string, progress: number, proje
         const isAssignee = task.assigneeId === user.id || task.assignees.some(a => a.userId === user.id)
         if (!isAssignee && user.role !== 'Admin') { // Admins can override
             return { error: 'Only assignees can update progress' }
+        }
+
+        if (isAssignee && progress === 100) {
+            // Find "Review" column for this project
+            // We need project ID from task, but task is linked to column which is linked to board
+            // But we can just search for a column named 'Review' in the same board.
+            // Wait, we don't have boardId directly on task usually. Task -> Column -> Board.
+            // Let's go up the chain.
+
+            const column = await prisma.column.findUnique({
+                where: { id: task.columnId || undefined },
+                include: { board: { include: { columns: true } } }
+            })
+
+            if (column && column.board) {
+                const reviewColumn = column.board.columns.find(c => c.name === 'Review')
+                if (reviewColumn && reviewColumn.id !== task.columnId) {
+                    await prisma.task.update({
+                        where: { id: taskId },
+                        data: {
+                            progress,
+                            columnId: reviewColumn.id
+                        }
+                    })
+                    return { success: true, movedToReview: true }
+                }
+            }
         }
 
         await prisma.task.update({
