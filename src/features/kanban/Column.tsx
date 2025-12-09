@@ -86,7 +86,7 @@ export function Column({ column, projectId, onEditTask, onAddTask, isDoneColumn,
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 p-1">
+            <div className="flex-1 overflow-y-auto space-y-2 px-2 pb-2 pt-1">
                 <SortableContext items={column.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                     {column.tasks.map(task => (
                         <TaskCard

@@ -308,7 +308,10 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
     const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
-        setIsDraggingFile(false)
+        // Only reset if we're leaving the form entirely
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setIsDraggingFile(false)
+        }
     }
 
     const handleDrop = (e: React.DragEvent) => {
@@ -348,7 +351,13 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                     </DialogTrigger>
                 )}
                 <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
-                    <form onSubmit={handleSubmit} className="flex flex-col h-full max-h-[85vh]">
+                    <form
+                        onSubmit={handleSubmit}
+                        className="flex flex-col h-full max-h-[85vh]"
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
                         <DialogHeader className="p-6 pb-2">
                             <DialogTitle className="text-xl font-semibold tracking-tight">
                                 {task ? "Edit Task" : "Create New Task"}
@@ -587,9 +596,6 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                 ) : (
                                     <div
                                         onClick={() => instructionsFileRef.current?.click()}
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={handleDrop}
                                         className={`border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer flex flex-col items-center justify-center text-center gap-2 ${isDraggingFile ? 'border-primary bg-primary/10' : 'hover:bg-muted/30 border-muted-foreground/30'}`}
                                     >
                                         <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
