@@ -129,7 +129,7 @@ export function GeneralChat() {
 
     // Scroll listener
     React.useEffect(() => {
-        const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+        const viewport = scrollRef.current
         if (!viewport) return
 
         const handleScroll = () => {
@@ -149,7 +149,7 @@ export function GeneralChat() {
     React.useEffect(() => {
         // Give it a tick to render layout
         const timer = setTimeout(() => {
-            const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+            const viewport = scrollRef.current
             if (viewport) {
                 viewport.scrollTop = viewport.scrollHeight
             }
@@ -158,7 +158,7 @@ export function GeneralChat() {
     }, [])
 
     const scrollToBottom = () => {
-        const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
+        const viewport = scrollRef.current
         if (viewport) {
             viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
         }
