@@ -63,9 +63,20 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
         setSkills(skills.filter(s => s !== skillToRemove))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (step !== 3) return // Should not happen via form submit if button type is carefully managed
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && step === 1) {
+            e.preventDefault()
+            handleNext()
+        }
+    }
+
+    const handleSubmit = async () => {
+        if (step !== 3) return
+
+        if (!interests.trim()) {
+            setError("Please tell us a bit about your interests")
+            return
+        }
 
         setIsSubmitting(true)
         setError("")
@@ -90,39 +101,39 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
             } else {
                 const data = await res.json()
                 setError(data.error || 'Failed to create account')
+                setIsSubmitting(false)
             }
         } catch (err) {
             setError('Something went wrong. Please try again.')
+            setIsSubmitting(false)
         }
-
-        setIsSubmitting(false)
     }
 
     return (
-        <form onSubmit={(e) => { e.preventDefault(); if (step === 3) handleSubmit(e); else handleNext(); }} className="space-y-6">
+        <div className="space-y-6">
 
             {/* Progress Indicator */}
             <div className="flex gap-2 mb-6 justify-center">
                 {[1, 2, 3].map(i => (
-                    <div key={i} className={`h-1 flex-1 rounded-full bg-[#1e1f22] overflow-hidden`}>
-                        <div className={`h-full bg-[#5865f2] transition-all duration-300 ${i <= step ? 'w-full' : 'w-0'}`} />
+                    <div key={i} className={`h-1.5 flex-1 rounded-full bg-muted overflow-hidden`}>
+                        <div className={`h-full bg-primary transition-all duration-500 ease-out ${i <= step ? 'w-full' : 'w-0'}`} />
                     </div>
                 ))}
             </div>
 
             {step === 1 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
                     <div className="space-y-2">
-                        <Label htmlFor="name" className="text-[#b5bac1]">Full Name</Label>
+                        <Label htmlFor="name">Full Name</Label>
                         <Input
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             placeholder="First Last"
-                            className="bg-[#1e1f22] border-[#1e1f22] text-white placeholder:text-[#72767d] focus:border-[#5865f2]"
                             autoFocus
                         />
-                        <p className="text-xs text-[#b5bac1]">
+                        <p className="text-xs text-muted-foreground">
                             Please use your real full name so team members can identify you.
                         </p>
                     </div>
@@ -130,18 +141,18 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
             )}
 
             {step === 2 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
                     <div className="space-y-2">
-                        <Label className="text-[#b5bac1]">Your Skills</Label>
-                        <div className="bg-[#1e1f22] border border-[#1e1f22] rounded-md p-2 focus-within:border-[#5865f2] flex flex-wrap gap-2 min-h-[42px]">
+                        <Label>Your Skills</Label>
+                        <div className="bg-background border rounded-md p-2 focus-within:ring-2 focus-within:ring-ring ring-offset-background flex flex-wrap gap-2 min-h-[42px] transition-all">
                             {skills.map(skill => (
-                                <span key={skill} className="bg-[#5865f2] text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                                <span key={skill} className="bg-primary/10 text-primary border border-primary/20 text-xs px-2 py-1 rounded-md flex items-center gap-1 font-medium animate-in zoom-in duration-200">
                                     {skill}
-                                    <button type="button" onClick={() => removeSkill(skill)} className="hover:text-white/80">×</button>
+                                    <button type="button" onClick={() => removeSkill(skill)} className="hover:text-primary/70 transition-colors">×</button>
                                 </span>
                             ))}
                             <input
-                                className="bg-transparent border-none outline-none text-white text-sm flex-1 min-w-[120px]"
+                                className="bg-transparent border-none outline-none text-sm flex-1 min-w-[120px] placeholder:text-muted-foreground"
                                 placeholder={skills.length === 0 ? "Type a skill and press Enter" : ""}
                                 value={currentSkill}
                                 onChange={(e) => setCurrentSkill(e.target.value)}
@@ -149,7 +160,7 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
                                 autoFocus
                             />
                         </div>
-                        <p className="text-xs text-[#b5bac1]">
+                        <p className="text-xs text-muted-foreground">
                             E.g. React, Design, Marketing, 3D Modeling...
                         </p>
                     </div>
@@ -157,15 +168,15 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
             )}
 
             {step === 3 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">
                     <div className="space-y-2">
-                        <Label htmlFor="interests" className="text-[#b5bac1]">What do you want to work on?</Label>
+                        <Label htmlFor="interests">What do you want to work on?</Label>
                         <textarea
                             id="interests"
                             value={interests}
                             onChange={(e) => setInterests(e.target.value)}
                             placeholder="Tell us about what you're excited to build or learn..."
-                            className="w-full h-32 bg-[#1e1f22] border border-[#1e1f22] text-white placeholder:text-[#72767d] focus:border-[#5865f2] rounded-md p-3 text-sm resize-none focus:outline-none"
+                            className="w-full h-32 bg-background border rounded-md p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring ring-offset-background transition-all placeholder:text-muted-foreground"
                             autoFocus
                         />
                     </div>
@@ -173,13 +184,13 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
             )}
 
             {error && (
-                <p className="text-sm text-red-400">{error}</p>
+                <p className="text-sm text-destructive font-medium animate-in fade-in slide-in-from-bottom-2">{error}</p>
             )}
 
             <Button
-                type={step === 3 ? "submit" : "button"}
-                onClick={step === 3 ? undefined : handleNext}
-                className="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white h-11"
+                type="button"
+                onClick={step === 3 ? handleSubmit : handleNext}
+                className="w-full h-11 text-base font-medium shadow-sm transition-all hover:translate-y-[-1px]"
                 disabled={isSubmitting}
             >
                 {isSubmitting ? (
@@ -191,7 +202,7 @@ export function OnboardingForm({ discordId, discordUsername, discordAvatar, sugg
                     step === 3 ? "Finish & Go to Workspace" : "Next"
                 )}
             </Button>
-        </form>
+        </div>
     )
 }
 

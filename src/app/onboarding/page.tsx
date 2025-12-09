@@ -18,24 +18,28 @@ export default async function OnboardingPage() {
         : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordUser.discriminator || '0') % 5}.png`
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#313338]">
-            <Card className="w-full max-w-md mx-4 bg-[#2b2d31] border-[#1e1f22]">
-                <CardHeader className="text-center">
-                    <div className="mx-auto mb-4">
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <div className="absolute inset-0 -z-10 h-full w-full bg-white dark:bg-black bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(#ffffff33_1px,transparent_1px)]"></div>
+            <Card className="w-full max-w-md mx-4 shadow-xl border-border/50 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+                <CardHeader className="text-center space-y-4 pb-2">
+                    <div className="mx-auto relative">
+                        <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
                         <img
                             src={avatarUrl}
                             alt={discordUser.username}
-                            className="w-20 h-20 rounded-full border-4 border-[#5865f2]"
+                            className="w-24 h-24 rounded-full border-4 border-background relative shadow-sm"
                         />
                     </div>
-                    <CardTitle className="text-xl font-bold text-white">
-                        Welcome, {discordUser.global_name || discordUser.username}!
-                    </CardTitle>
-                    <CardDescription className="text-[#b5bac1]">
-                        Complete your profile to join the CuPI workspace
-                    </CardDescription>
+                    <div className="space-y-2">
+                        <CardTitle className="text-2xl font-bold tracking-tight">
+                            Welcome, {discordUser.global_name || discordUser.username}!
+                        </CardTitle>
+                        <CardDescription className="text-base">
+                            Let's get your profile set up on CuPI.
+                        </CardDescription>
+                    </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     <OnboardingForm
                         discordId={discordUser.id}
                         discordUsername={discordUser.username}
