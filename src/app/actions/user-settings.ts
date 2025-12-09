@@ -60,37 +60,32 @@ export async function deleteAccount() {
     if (!user) return { error: "Not authenticated" }
 
     try {
-        // Anonymize logs in a transaction (or sequential)
-        // Note: Prisma operations for updateMany.
-
-        // 1. Anonymize Activity Logs
-        await prisma.activityLog.updateMany({
-            where: { changedBy: user.id },
-            data: { changedByName: "Deleted User" }
-        })
-
-        // 2. Anonymize Comments
-        await prisma.comment.updateMany({
-            where: { authorId: user.id },
-            data: { authorName: "Deleted User" }
-        })
-
-        // 3. Anonymize Chat Messages
-        await prisma.generalChatMessage.updateMany({
-            where: { authorId: user.id },
-            data: { authorName: "Deleted User" }
-        })
-
-        // 4. Delete the user
-        // Due to Cascade/SetNull on relations, this should work.
-        await prisma.user.delete({
-            where: { id: user.id }
-        })
+        await prisma.$transaction([
+            // 1. Anonymize Activity Logs
+            prisma.activityLog.updateMany({
+                where: { changedBy: user.id },
+                data: { changedByName: "Deleted User" }
+            }),
+            // 2. Anonymize Comments
+            prisma.comment.updateMany({
+                where: { authorId: user.id },
+                data: { authorName: "Deleted User" }
+            }),
+            // 3. Anonymize Chat Messages
+            prisma.generalChatMessage.updateMany({
+                where: { authorId: user.id },
+                data: { authorName: "Deleted User" }
+            }),
+            // 4. Delete the user
+            prisma.user.delete({
+                where: { id: user.id }
+            })
+        ])
 
         const cookieStore = await cookies()
-        cookieStore.delete('user_id')
-        cookieStore.delete('discord_user')
-        cookieStore.delete('discord_token')
+        cookieStore.getAll().forEach((cookie) => {
+            cookieStore.delete(cookie.name)
+        })
 
         return { success: true }
     } catch (error) {
