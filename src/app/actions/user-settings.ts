@@ -60,6 +60,29 @@ export async function deleteAccount() {
     if (!user) return { error: "Not authenticated" }
 
     try {
+        // Anonymize logs in a transaction (or sequential)
+        // Note: Prisma operations for updateMany.
+
+        // 1. Anonymize Activity Logs
+        await prisma.activityLog.updateMany({
+            where: { changedBy: user.id },
+            data: { changedByName: "Deleted User" }
+        })
+
+        // 2. Anonymize Comments
+        await prisma.comment.updateMany({
+            where: { authorId: user.id },
+            data: { authorName: "Deleted User" }
+        })
+
+        // 3. Anonymize Chat Messages
+        await prisma.generalChatMessage.updateMany({
+            where: { authorId: user.id },
+            data: { authorName: "Deleted User" }
+        })
+
+        // 4. Delete the user
+        // Due to Cascade/SetNull on relations, this should work.
         await prisma.user.delete({
             where: { id: user.id }
         })

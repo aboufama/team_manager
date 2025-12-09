@@ -25,6 +25,10 @@ export function WorkspaceSelector({ user }: { user: any }) {
     const [displayName, setDisplayName] = useState(user.name || '')
     const [showNameWarning, setShowNameWarning] = useState(false)
 
+    // Delete Account state
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+    const [deleteConfirmation, setDeleteConfirmation] = useState("")
+
     useEffect(() => {
         if (user.name && !user.name.trim().includes(' ')) {
             setShowNameWarning(true)
@@ -220,25 +224,17 @@ export function WorkspaceSelector({ user }: { user: any }) {
                     >
                         <LogOut className="w-4 h-4" /> <span className="hidden md:inline">Log Out</span>
                     </Button>
+                    <Button
+                        variant="ghost"
+                        className="gap-2 text-zinc-400 hover:text-red-700 hover:bg-red-50 text-sm"
+                        onClick={() => {
+                            setDeleteConfirmation("")
+                            setDeleteConfirmOpen(true)
+                        }}
+                    >
+                        <span className="hidden md:inline">Delete Account</span>
+                    </Button>
                 </div>
-            </div>
-
-            {/* Account Management */}
-            <div className="flex justify-end pt-2">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-zinc-400 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => {
-                        if (confirm("Are you sure you want to permanently delete your account? This cannot be undone.")) {
-                            deleteAccount().then(() => {
-                                window.location.href = '/'
-                            })
-                        }
-                    }}
-                >
-                    Delete Account
-                </Button>
             </div>
 
             {/* Grid */}
@@ -353,6 +349,46 @@ export function WorkspaceSelector({ user }: { user: any }) {
                             Continue
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+
+            {/* Confirm Delete Dialog */}
+            <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-red-600">Delete Account</DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                            Your messages and activity logs will be anonymized.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <Label>Type <span className="font-bold text-red-600">DELETE</span> to confirm</Label>
+                        <Input
+                            value={deleteConfirmation}
+                            onChange={(e) => setDeleteConfirmation(e.target.value)}
+                            placeholder="DELETE"
+                            className="border-red-200 focus:border-red-500"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <Button variant="ghost" onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+                            <Button
+                                variant="destructive"
+                                disabled={deleteConfirmation !== 'DELETE' || isPending}
+                                onClick={() => {
+                                    startTransition(async () => {
+                                        const res = await deleteAccount()
+                                        if (res && res.success) {
+                                            window.location.href = '/'
+                                        }
+                                    })
+                                }}
+                            >
+                                {isPending ? 'Deleting...' : 'Delete Account'}
+                            </Button>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
