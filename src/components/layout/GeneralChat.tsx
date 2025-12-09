@@ -147,7 +147,10 @@ export function GeneralChat() {
         if (isAtBottom) {
             const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
             if (viewport) {
-                viewport.scrollTop = viewport.scrollHeight
+                // Use setTimeout to ensure DOM has updated with new message height
+                setTimeout(() => {
+                    viewport.scrollTop = viewport.scrollHeight
+                }, 10)
             }
         }
     }, [messages, isAtBottom])
