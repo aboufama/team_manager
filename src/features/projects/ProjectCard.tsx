@@ -14,7 +14,7 @@ type Project = {
     description: string | null
     leadId: string | null
     lead: { id: string; name: string } | null
-    _count: { sprints: number }
+    _count: { pushes: number }
 }
 
 type Props = {
@@ -49,7 +49,7 @@ export function ProjectCard({ project, users, isAdmin }: Props) {
             </CardHeader>
             <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{project._count.sprints} sprint{project._count.sprints !== 1 ? 's' : ''}</span>
+                    <span>{project._count.pushes} push{project._count.pushes !== 1 ? 'es' : ''}</span>
                     {isAdmin ? (
                         <div
                             className="relative z-10"

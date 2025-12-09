@@ -50,10 +50,10 @@ const formatDate = (d: Date | string | null | undefined) => {
     return dateObj.toISOString().split('T')[0]
 }
 
-export function TaskDialog({ columnId, projectId, sprintId, users, task, open: externalOpen, onOpenChange }: {
+export function TaskDialog({ columnId, projectId, pushId, users, task, open: externalOpen, onOpenChange }: {
     columnId?: string
     projectId: string
-    sprintId?: string | null
+    pushId?: string | null
     users: { id: string; name: string }[]
     task?: TaskType | null
     open?: boolean
@@ -226,7 +226,7 @@ export function TaskDialog({ columnId, projectId, sprintId, users, task, open: e
                         requireAttachment,
                         columnId: columnId!,
                         projectId,
-                        sprintId: sprintId || undefined
+                        pushId: pushId || undefined
                     })
 
                     if (result?.error) {

@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth'
 
-const SPRINT_COLORS = [
+const PUSH_COLORS = [
     "#3b82f6", // blue
     "#22c55e", // green
     "#f59e0b", // amber
@@ -15,16 +15,16 @@ const SPRINT_COLORS = [
     "#84cc16", // lime
 ]
 
-export async function createSprint(formData: FormData) {
+export async function createPush(formData: FormData) {
     try {
         const user = await getCurrentUser()
         if (!user) {
-            return { error: 'Unauthorized: Only Admins and Team Leads can create sprints' }
+            return { error: 'Unauthorized: Only Admins and Team Leads can create pushes' }
         }
 
-        // RBAC Check - Only Admin and Team Lead can create sprints
+        // RBAC Check - Only Admin and Team Lead can create pushes
         if (user.role !== 'Admin' && user.role !== 'Team Lead') {
-            return { error: 'Unauthorized: Only Admins and Team Leads can create sprints' }
+            return { error: 'Unauthorized: Only Admins and Team Leads can create pushes' }
         }
 
         const name = formData.get('name') as string
@@ -32,29 +32,33 @@ export async function createSprint(formData: FormData) {
         const startDate = formData.get('startDate') as string
         const endDate = formData.get('endDate') as string
 
-        if (!name?.trim()) return { error: 'Sprint name is required' }
+        if (!name?.trim()) return { error: 'Push name is required' }
         if (!projectId) return { error: 'Project ID is required' }
-        if (!startDate || !endDate) return { error: 'Start and end dates are required' }
+        if (!startDate) return { error: 'Start date is required' }
+        // End date is optional now
 
         const start = new Date(startDate)
-        const end = new Date(endDate)
+        let end: Date | null = null
 
-        if (end < start) {
-            return { error: 'End date must be after or equal to start date' }
+        if (endDate) {
+            end = new Date(endDate)
+            if (end < start) {
+                return { error: 'End date must be after or equal to start date' }
+            }
         }
 
-        // Get count of existing sprints to assign color
-        const existingCount = await prisma.sprint.count({
+        // Get count of existing pushes to assign color
+        const existingCount = await prisma.push.count({
             where: { projectId }
         })
 
-        const sprint = await prisma.sprint.create({
+        const push = await prisma.push.create({
             data: {
                 name: name.trim(),
                 projectId,
                 startDate: start,
                 endDate: end,
-                color: SPRINT_COLORS[existingCount % SPRINT_COLORS.length],
+                color: PUSH_COLORS[existingCount % PUSH_COLORS.length],
                 status: 'Active'
             }
         })
@@ -62,18 +66,18 @@ export async function createSprint(formData: FormData) {
         revalidatePath('/dashboard')
         revalidatePath(`/dashboard/projects/${projectId}`)
 
-        return { success: true, sprint }
+        return { success: true, push }
     } catch (error) {
-        console.error('[createSprint] Error:', error)
-        return { error: 'Failed to create sprint' }
+        console.error('[createPush] Error:', error)
+        return { error: 'Failed to create push' }
     }
 }
 
-export async function updateSprint(input: {
+export async function updatePush(input: {
     id: string
     name?: string
     startDate?: string
-    endDate?: string
+    endDate?: string | null
     status?: string
     color?: string
 }) {
@@ -83,59 +87,64 @@ export async function updateSprint(input: {
     }
 
     if (user.role !== 'Admin' && user.role !== 'Team Lead') {
-        return { error: 'Unauthorized: Only Admins and Team Leads can update sprints' }
+        return { error: 'Unauthorized: Only Admins and Team Leads can update pushes' }
     }
 
     try {
-        const sprint = await prisma.sprint.findUnique({
+        const push = await prisma.push.findUnique({
             where: { id: input.id },
             select: { projectId: true }
         })
 
-        if (!sprint) {
-            return { error: 'Sprint not found' }
+        if (!push) {
+            return { error: 'Push not found' }
         }
 
         const updateData: Record<string, unknown> = {}
         if (input.name) updateData.name = input.name
         if (input.startDate) updateData.startDate = new Date(input.startDate)
-        if (input.endDate) updateData.endDate = new Date(input.endDate)
+
+        // Handle endDate explicitly if passed (can be null)
+        if (input.endDate !== undefined) {
+            updateData.endDate = input.endDate ? new Date(input.endDate) : null
+        }
+
         if (input.status) updateData.status = input.status
         if (input.color) updateData.color = input.color
 
-        await prisma.sprint.update({
+        await prisma.push.update({
             where: { id: input.id },
             data: updateData
         })
 
         revalidatePath('/dashboard')
-        revalidatePath(`/dashboard/projects/${sprint.projectId}`)
+        revalidatePath(`/dashboard/projects/${push.projectId}`)
         return { success: true }
     } catch (error) {
-        console.error('Failed to update sprint:', error)
-        return { error: 'Failed to update sprint' }
+        console.error('Failed to update push:', error)
+        return { error: 'Failed to update push' }
     }
 }
 
-export async function deleteSprint(sprintId: string, projectId: string) {
+export async function deletePush(pushId: string, projectId: string) {
     try {
         const user = await getCurrentUser()
         if (!user) {
-            return { error: 'Unauthorized: Only Admins can delete sprints' }
+            return { error: 'Unauthorized: Only Admins can delete pushes' }
         }
 
         if (user.role !== 'Admin' && user.role !== 'Team Lead') {
-            return { error: 'Unauthorized: Only Admins and Team Leads can delete sprints' }
+            return { error: 'Unauthorized: Only Admins and Team Leads can delete pushes' }
         }
 
-        // Remove sprint association from tasks before deleting
+        // Remove push association from tasks before deleting
         await prisma.task.updateMany({
-            where: { sprintId },
-            data: { sprintId: null }
+            where: { pushId },
+            data: { pushId: null }
         })
 
-        await prisma.sprint.delete({
-            where: { id: sprintId }
+        await prisma.push.delete({
+            where: { id: pushId }
         })
 
         revalidatePath('/dashboard')
@@ -143,12 +152,12 @@ export async function deleteSprint(sprintId: string, projectId: string) {
 
         return { success: true }
     } catch (error) {
-        console.error('[deleteSprint] Error:', error)
-        return { error: 'Failed to delete sprint' }
+        console.error('[deletePush] Error:', error)
+        return { error: 'Failed to delete push' }
     }
 }
 
-export async function assignTaskToSprint(taskId: string, sprintId: string | null) {
+export async function assignTaskToPush(taskId: string, pushId: string | null) {
     const user = await getCurrentUser()
     if (!user || !user.id || user.id === 'pending') {
         return { error: 'Unauthorized' }
@@ -166,12 +175,12 @@ export async function assignTaskToSprint(taskId: string, sprintId: string | null
 
         await prisma.task.update({
             where: { id: taskId },
-            data: { sprintId }
+            data: { pushId }
         })
 
-        // Check if sprint is now complete (all tasks in Done column)
-        if (sprintId) {
-            await checkAndUpdateSprintStatus(sprintId)
+        // Check if push is now complete (all tasks in Done column)
+        if (pushId) {
+            await checkAndUpdatePushStatus(pushId)
         }
 
         const projectId = task.column?.board?.projectId
@@ -181,15 +190,15 @@ export async function assignTaskToSprint(taskId: string, sprintId: string | null
 
         return { success: true }
     } catch (error) {
-        console.error('Failed to assign task to sprint:', error)
+        console.error('Failed to assign task to push:', error)
         return { error: 'Failed to assign task' }
     }
 }
 
-export async function checkAndUpdateSprintStatus(sprintId: string) {
+export async function checkAndUpdatePushStatus(pushId: string) {
     try {
-        const sprint = await prisma.sprint.findUnique({
-            where: { id: sprintId },
+        const push = await prisma.push.findUnique({
+            where: { id: pushId },
             include: {
                 tasks: {
                     include: {
@@ -199,31 +208,31 @@ export async function checkAndUpdateSprintStatus(sprintId: string) {
             }
         })
 
-        if (!sprint || sprint.tasks.length === 0) return
+        if (!push || push.tasks.length === 0) return
 
         // Check if all tasks are in the "Done" column
-        const allDone = sprint.tasks.every(task => task.column?.name === 'Done')
+        const allDone = push.tasks.every(task => task.column?.name === 'Done')
 
-        if (allDone && sprint.status !== 'Completed') {
-            await prisma.sprint.update({
-                where: { id: sprintId },
+        if (allDone && push.status !== 'Completed') {
+            await prisma.push.update({
+                where: { id: pushId },
                 data: { status: 'Completed' }
             })
-        } else if (!allDone && sprint.status === 'Completed') {
+        } else if (!allDone && push.status === 'Completed') {
             // Revert if a task is moved out of Done
-            await prisma.sprint.update({
-                where: { id: sprintId },
+            await prisma.push.update({
+                where: { id: pushId },
                 data: { status: 'Active' }
             })
         }
     } catch (error) {
-        console.error('Failed to update sprint status:', error)
+        console.error('Failed to update push status:', error)
     }
 }
 
-export async function getSprints(projectId: string) {
+export async function getPushes(projectId: string) {
     try {
-        const sprints = await prisma.sprint.findMany({
+        const pushes = await prisma.push.findMany({
             where: { projectId },
             include: {
                 tasks: {
@@ -236,13 +245,13 @@ export async function getSprints(projectId: string) {
             orderBy: { startDate: 'asc' }
         })
 
-        return sprints.map(sprint => ({
-            ...sprint,
-            taskCount: sprint.tasks.length,
-            completedCount: sprint.tasks.filter(t => t.column?.name === 'Done').length
+        return pushes.map(push => ({
+            ...push,
+            taskCount: push.tasks.length,
+            completedCount: push.tasks.filter(t => t.column?.name === 'Done').length
         }))
     } catch (error) {
-        console.error('Failed to get sprints:', error)
+        console.error('Failed to get pushes:', error)
         return []
     }
 }

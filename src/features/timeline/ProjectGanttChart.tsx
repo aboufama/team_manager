@@ -13,14 +13,14 @@ type Task = {
     updatedAt?: Date | string | null
     column?: { name: string } | null
     assignee?: { name: string } | null
-    sprint?: { id: string; name: string; color: string; status: string } | null
+    push?: { id: string; name: string; color: string; status: string } | null
 }
 
-type SprintType = {
+type PushType = {
     id: string
     name: string
     startDate: Date | string
-    endDate: Date | string
+    endDate: Date | string | null
     status: string
     color: string
     projectId: string
@@ -31,7 +31,7 @@ type SprintType = {
 type ProjectGanttChartProps = {
     tasks: Task[]
     projectId: string
-    sprints?: SprintType[]
+    pushes?: PushType[]
 }
 
 const formatDateShort = (date: Date) => {
@@ -62,8 +62,8 @@ const getTaskDuration = (start: Date | string, end: Date | string) => {
     return days
 }
 
-export function ProjectGanttChart({ tasks, projectId, sprints = [] }: ProjectGanttChartProps) {
-    const tasksWithDates = tasks.filter(t => t.startDate && t.endDate && t.sprint)
+export function ProjectGanttChart({ tasks, projectId, pushes = [] }: ProjectGanttChartProps) {
+    const tasksWithDates = tasks.filter(t => t.startDate && t.endDate && t.push)
 
     if (tasksWithDates.length === 0) {
         return (
@@ -148,14 +148,14 @@ export function ProjectGanttChart({ tasks, projectId, sprints = [] }: ProjectGan
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3 text-xs overflow-x-auto max-w-[600px] scrollbar-hide py-1">
 
-                        {/* Sprint Legends */}
-                        {sprints.map(sprint => (
-                            <div key={sprint.id} className="flex items-center gap-1 shrink-0">
+                        {/* Push Legends */}
+                        {pushes.map(push => (
+                            <div key={push.id} className="flex items-center gap-1 shrink-0">
                                 <div
                                     className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: sprint.color }}
+                                    style={{ backgroundColor: push.color }}
                                 />
-                                <span>{sprint.name}</span>
+                                <span>{push.name}</span>
                             </div>
                         ))}
                     </div>
@@ -229,7 +229,7 @@ export function ProjectGanttChart({ tasks, projectId, sprints = [] }: ProjectGan
                                     <div className="w-48 shrink-0 border-r px-2 flex items-center gap-2">
                                         <div
                                             className="w-2 h-2 rounded-full shrink-0"
-                                            style={{ backgroundColor: task.sprint?.color || '#94a3b8' }}
+                                            style={{ backgroundColor: task.push?.color || '#94a3b8' }}
                                         />
                                         <Link
                                             href={`/dashboard/projects/${projectId}?task=${task.id}`}
@@ -259,9 +259,10 @@ export function ProjectGanttChart({ tasks, projectId, sprints = [] }: ProjectGan
                                                 left: `${left}%`,
                                                 width: `${width}%`,
                                                 minWidth: '24px',
-                                                backgroundColor: task.sprint?.color || '#94a3b8'
+                                                backgroundColor: task.push?.color || '#94a3b8'
                                             }}
-                                            title={`${task.title}\nSprint: ${task.sprint?.name || 'Backlog'}\n${startStr} - ${endStr} (${duration}d)${lastUpdated ? `\nUpdated: ${lastUpdated}` : ''}`}
+                                            title={`${task.title}\nPush: ${task.push?.name || 'Backlog'}\n${startStr} - ${endStr} (${duration}d)${lastUpdated ? `\nUpdated: ${lastUpdated}` : ''}`}
+
                                         >
                                             {status === 'Done' && (
                                                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-500 fill-white" />

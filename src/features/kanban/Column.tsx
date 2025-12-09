@@ -35,23 +35,23 @@ type ColumnProps = {
     isDoneColumn?: boolean
     isReviewColumn?: boolean
     userRole?: string
-    sprintId?: string | null
+    pushId?: string | null
     isFlashing?: boolean
     highlightTaskId?: string | null
 }
 
-export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewColumn, userRole, isFlashing, sprintId, highlightTaskId }: ColumnProps) {
+export function Column({ column, onEditTask, onAddTask, isDoneColumn, isReviewColumn, userRole, isFlashing, pushId, highlightTaskId }: ColumnProps) {
     const isAdmin = userRole === 'Admin' || userRole === 'Team Lead'
     // Members can drop INTO Review, but only Done is fully restricted for non-admins
     const isDropDisabled = !isAdmin && isDoneColumn
     // Review and Done are restricted for clicking/dragging FROM for non-admins
     const isInteractionRestricted = !isAdmin && (isDoneColumn || isReviewColumn)
 
-    const droppableId = `${sprintId || 'backlog'}::${column.id}`
+    const droppableId = `${pushId || 'backlog'}::${column.id}`
 
     const { setNodeRef: setDroppableRef, isOver } = useDroppable({
         id: droppableId,
-        data: { type: "Column", column, sprintId },
+        data: { type: "Column", column, pushId },
         disabled: isDropDisabled
     })
 

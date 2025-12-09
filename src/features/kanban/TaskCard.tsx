@@ -11,7 +11,7 @@ type TaskCardProps = {
         id: string
         title: string
         columnId: string | null
-        sprint?: { id: string; name: string; color: string; status: string } | null
+        push?: { id: string; name: string; color: string; status: string } | null
         startDate?: Date | string | null
         endDate?: Date | string | null
         updatedAt?: Date | string | null

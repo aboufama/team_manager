@@ -11,7 +11,7 @@ type Task = {
     endDate: Date | string | null
     column?: { name: string } | null
     project?: { id: string; name: string } | null
-    sprint?: { id: string; name: string; color: string } | null
+    push?: { id: string; name: string; color: string } | null
 }
 
 type ProjectTimelineProps = {
@@ -99,8 +99,8 @@ export function ProjectTimeline({ tasks }: ProjectTimelineProps) {
                                     const right = getPosition(new Date(task.endDate!))
                                     const width = Math.max(right - left, 2) // Minimum width
 
-                                    // Color by sprint or default blue
-                                    const barColor = task.sprint?.color || '#3b82f6' // Default blue-500 hex
+                                    // Color by push or default blue
+                                    const barColor = task.push?.color || '#3b82f6' // Default blue-500 hex
 
                                     return (
                                         <div key={task.id} className="relative h-4 flex items-center group">
@@ -112,7 +112,7 @@ export function ProjectTimeline({ tasks }: ProjectTimelineProps) {
                                                     width: `${width}%`,
                                                     backgroundColor: barColor
                                                 }}
-                                                title={`${task.title} (${task.sprint?.name || 'No Sprint'})`}
+                                                title={`${task.title} (${task.push?.name || 'No Push'})`}
                                             />
                                             {/* Label - visible on hover or if space permits? Keeps it minimal */}
                                             <span

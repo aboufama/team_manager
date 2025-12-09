@@ -9,7 +9,7 @@ import Link from "next/link"
 import { TaskDialog } from "@/features/kanban/TaskDialog"
 import { TaskPreview } from "@/features/kanban/TaskPreview"
 import { ProjectGanttChart } from "@/features/timeline/ProjectGanttChart"
-import { SprintDialog } from "@/features/sprints/SprintDialog"
+import { PushDialog } from "@/features/pushes/PushDialog"
 
 // Dynamically import Board to prevent SSR hydration issues
 const Board = dynamic(() => import("@/features/kanban/Board").then(mod => ({ default: mod.Board })), {
@@ -17,7 +17,7 @@ const Board = dynamic(() => import("@/features/kanban/Board").then(mod => ({ def
     loading: () => <div className="flex items-center justify-center h-full">Loading board...</div>
 })
 
-type SprintType = {
+type PushType = {
     id: string
     name: string
     startDate: Date | string
@@ -48,7 +48,7 @@ type TaskType = {
     column?: { name: string } | null
     comments?: { createdAt: Date | string }[]
     attachments?: { id: string; createdAt: Date | string }[]
-    sprint?: { id: string; name: string; color: string; status: string } | null
+    push?: { id: string; name: string; color: string; status: string } | null
 }
 
 type ProjectContentProps = {
@@ -67,10 +67,10 @@ type ProjectContentProps = {
         }[]
     } | null
     users: { id: string; name: string }[]
-    sprints?: SprintType[]
+    pushes?: PushType[]
 }
 
-export function ProjectContent({ project, board, users, sprints = [] }: ProjectContentProps) {
+export function ProjectContent({ project, board, users, pushes = [] }: ProjectContentProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const taskIdFromUrl = searchParams.get('task')
@@ -79,7 +79,7 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
     const [view, setView] = useState<'kanban' | 'gantt'>(viewFromUrl === 'gantt' ? 'gantt' : 'kanban')
     const [previewTask, setPreviewTask] = useState<TaskType | null>(null)
     const [editTask, setEditTask] = useState<TaskType | null>(null)
-    const [showSprintDialog, setShowSprintDialog] = useState(false)
+    const [showPushDialog, setShowPushDialog] = useState(false)
     const [userRole, setUserRole] = useState<string>('Member')
 
     // Handle view change
@@ -96,9 +96,9 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
             .catch(() => setUserRole('Member'))
     }, [])
 
-    const canManageSprints = userRole === 'Admin' || userRole === 'Team Lead'
+    const canManagePushes = userRole === 'Admin' || userRole === 'Team Lead'
 
-    // Get all tasks for Gantt chart with column and sprint info
+    // Get all tasks for Gantt chart with column and push info
     const allTasks = board?.columns.flatMap(col =>
         col.tasks.map(task => ({
             ...task,
@@ -140,15 +140,15 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                             </Link>
                         </Button>
                         <h1 className="text-base md:text-lg font-semibold truncate">{project.name}</h1>
-                        {canManageSprints && view === 'kanban' && (
+                        {canManagePushes && view === 'kanban' && (
                             <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 md:px-3 shrink-0"
-                                onClick={() => setShowSprintDialog(true)}
+                                onClick={() => setShowPushDialog(true)}
                             >
                                 <Plus className="w-3.5 h-3.5 md:mr-1.5" />
-                                <span className="hidden md:inline">Add Sprint</span>
+                                <span className="hidden md:inline">Add Push</span>
                             </Button>
                         )}
                     </div>
@@ -193,7 +193,7 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                             board={board}
                             projectId={project.id}
                             users={users}
-                            sprints={sprints}
+                            pushes={pushes}
                             highlightTaskId={highlightTaskId}
                         />
                     ) : (
@@ -206,7 +206,7 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                         <ProjectGanttChart
                             tasks={allTasks}
                             projectId={project.id}
-                            sprints={sprints}
+                            pushes={pushes}
                         />
                     </div>
                 )
@@ -243,11 +243,11 @@ export function ProjectContent({ project, board, users, sprints = [] }: ProjectC
                 )
             }
 
-            {/* Sprint Dialog */}
-            <SprintDialog
+            {/* Push Dialog */}
+            <PushDialog
                 projectId={project.id}
-                open={showSprintDialog}
-                onOpenChange={setShowSprintDialog}
+                open={showPushDialog}
+                onOpenChange={setShowPushDialog}
             />
         </div >
     )

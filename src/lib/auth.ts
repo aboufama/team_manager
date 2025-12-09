@@ -54,7 +54,8 @@ export async function getCurrentUser() {
                 name: discordUser.global_name || discordUser.username,
                 email: `discord_${discordUser.id}@discord.user`,
                 avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
-                role: 'Member' as const
+                role: 'Member' as const,
+                discordId: discordUser.id
             }
         }
 

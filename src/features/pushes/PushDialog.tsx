@@ -12,9 +12,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createSprint } from "@/app/actions/sprints"
+import { createPush } from "@/app/actions/pushes"
 
-interface SprintDialogProps {
+interface PushDialogProps {
     projectId: string
     open: boolean
     onOpenChange: (open: boolean) => void
@@ -24,14 +24,12 @@ interface SprintDialogProps {
 const getDefaultStartDate = () => new Date().toISOString().split('T')[0]
 const getDefaultEndDate = () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProps) {
+export function PushDialog({ projectId, open, onOpenChange }: PushDialogProps) {
     const router = useRouter()
-
-
 
     const [name, setName] = useState("")
     const [startDate, setStartDate] = useState(getDefaultStartDate())
-    const [endDate, setEndDate] = useState(getDefaultEndDate())
+    const [endDate, setEndDate] = useState("") // Optional default
     const [error, setError] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
 
@@ -39,7 +37,7 @@ export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProp
     useEffect(() => {
         if (open) {
             setStartDate(getDefaultStartDate())
-            setEndDate(getDefaultEndDate())
+            setEndDate("") // Optional
         }
     }, [open])
 
@@ -48,16 +46,16 @@ export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProp
         setError(null)
 
         if (!name.trim()) {
-            setError("Sprint name is required")
+            setError("Push name is required")
             return
         }
 
-        if (!startDate || !endDate) {
-            setError("Start and end dates are required")
+        if (!startDate) {
+            setError("Start date is required")
             return
         }
 
-        if (new Date(endDate) < new Date(startDate)) {
+        if (endDate && new Date(endDate) < new Date(startDate)) {
             setError("End date must be after or equal to start date")
             return
         }
@@ -66,16 +64,16 @@ export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProp
         formData.append('name', name.trim())
         formData.append('projectId', projectId)
         formData.append('startDate', startDate)
-        formData.append('endDate', endDate)
+        if (endDate) formData.append('endDate', endDate)
 
         startTransition(async () => {
-            const result = await createSprint(formData)
+            const result = await createPush(formData)
             if (result.error) {
                 setError(result.error)
             } else {
                 setName("")
                 setStartDate(getDefaultStartDate())
-                setEndDate(getDefaultEndDate())
+                setEndDate("")
                 setError(null)
                 onOpenChange(false)
                 router.refresh()
@@ -86,7 +84,7 @@ export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProp
     const handleClose = () => {
         setName("")
         setStartDate(getDefaultStartDate())
-        setEndDate(getDefaultEndDate())
+        setEndDate("")
         setError(null)
         onOpenChange(false)
     }
@@ -95,17 +93,17 @@ export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProp
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Create New Sprint</DialogTitle>
+                    <DialogTitle>Create New Push</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="name">Sprint Name</Label>
+                            <Label htmlFor="name">Push Name</Label>
                             <Input
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g., Sprint 1 - MVP Features"
+                                placeholder="e.g., Push 1 - Core Features"
                                 autoFocus
                             />
                         </div>
@@ -120,7 +118,10 @@ export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProp
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="endDate">End Date</Label>
+                                <div className="flex justify-between items-center">
+                                    <Label htmlFor="endDate">End Date</Label>
+                                    <span className="text-[10px] text-muted-foreground">(Optional)</span>
+                                </div>
                                 <Input
                                     id="endDate"
                                     type="date"
@@ -140,7 +141,7 @@ export function SprintDialog({ projectId, open, onOpenChange }: SprintDialogProp
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isPending}>
-                            {isPending ? "Creating..." : "Create Sprint"}
+                            {isPending ? "Creating..." : "Create Push"}
                         </Button>
                     </DialogFooter>
                 </form>

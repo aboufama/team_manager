@@ -3,41 +3,46 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 
-interface SprintInfoProps {
-    sprint?: {
+interface PushInfoProps {
+    push?: {
         name: string
         startDate: Date
-        endDate: Date
+        endDate: Date | null
         project: { name: string }
         tasks: { status: string }[]
     } | null
 }
 
-export function SprintInfo({ sprint }: SprintInfoProps) {
-    if (!sprint) {
+export function PushInfo({ push }: PushInfoProps) {
+    if (!push) {
         return (
             <Card className="h-full">
                 <CardHeader>
-                    <CardTitle className="text-base">Current Sprint</CardTitle>
-                    <CardDescription>No active sprint found.</CardDescription>
+                    <CardTitle className="text-base">Current Push</CardTitle>
+                    <CardDescription>No active push found.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-muted-foreground">No sprints are currently active.</p>
+                    <p className="text-sm text-muted-foreground">No pushes are currently active.</p>
                 </CardContent>
             </Card>
         )
     }
 
-    const totalTasks = sprint.tasks.length
-    const completedTasks = sprint.tasks.filter(t => t.status === 'Done').length
+    const totalTasks = push.tasks.length
+    const completedTasks = push.tasks.filter(t => t.status === 'Done').length
     const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100)
-    const daysLeft = Math.ceil((new Date(sprint.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+
+    let daysText = 'Ongoing'
+    if (push.endDate) {
+        const daysLeft = Math.ceil((new Date(push.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        daysText = daysLeft > 0 ? `${daysLeft}` : 'Ended'
+    }
 
     return (
         <Card className="h-full">
             <CardHeader className="pb-2">
-                <CardTitle className="text-base">{sprint.name}</CardTitle>
-                <CardDescription>{sprint.project.name}</CardDescription>
+                <CardTitle className="text-base">{push.name}</CardTitle>
+                <CardDescription>{push.project.name}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-1">
@@ -55,7 +60,7 @@ export function SprintInfo({ sprint }: SprintInfoProps) {
                     </div>
                     <div>
                         <span className="text-muted-foreground">Days Left</span>
-                        <p className="font-medium">{daysLeft > 0 ? daysLeft : 'Ended'}</p>
+                        <p className="font-medium">{daysText}</p>
                     </div>
                 </div>
             </CardContent>

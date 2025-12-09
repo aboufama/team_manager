@@ -1,0 +1,58 @@
+{
+  "timestamp": "2025-12-09T01:18:28.058Z",
+  "data": {
+    "users": [
+      {
+        "id": "cmixvntch0000d9b0bhf0fk31",
+        "name": "munschiah",
+        "email": "alaaaaannnnnn@gmail.com",
+        "discordId": "733929944450727956",
+        "avatar": "https://cdn.discordapp.com/avatars/733929944450727956/3f8b39b9ad6aac131c9e7cbe2a8fdadb.png",
+        "role": "Member",
+        "workspaceId": null,
+        "createdAt": "2025-12-09T01:04:15.186Z",
+        "updatedAt": "2025-12-09T01:04:15.186Z"
+      },
+      {
+        "id": "cmixvobyr0000vss3cabm7qke",
+        "name": "Bameron",
+        "email": "andre.boufama@gmail.com",
+        "discordId": "547927179401494539",
+        "avatar": "https://cdn.discordapp.com/avatars/547927179401494539/ac1c4a3469cde19af95e08e4edcba193.png",
+        "role": "Admin",
+        "workspaceId": "cmixvxmrm0000ciisbfcbet3q",
+        "createdAt": "2025-12-09T01:04:39.315Z",
+        "updatedAt": "2025-12-09T01:16:08.600Z"
+      }
+    ],
+    "workspaces": [
+      {
+        "id": "cmixvxmrm0000ciisbfcbet3q",
+        "name": "CUPI",
+        "inviteCode": "Q2MKYK",
+        "discordChannelId": null,
+        "ownerId": "cmixvobyr0000vss3cabm7qke",
+        "createdAt": "2025-12-09T01:11:53.218Z",
+        "updatedAt": "2025-12-09T01:11:53.218Z"
+      }
+    ],
+    "workspaceMembers": [
+      {
+        "id": "cmixvxmrs0002ciis1tl39ubz",
+        "userId": "cmixvobyr0000vss3cabm7qke",
+        "workspaceId": "cmixvxmrm0000ciisbfcbet3q",
+        "role": "Admin",
+        "name": "Bameron",
+        "joinedAt": "2025-12-09T01:11:53.224Z"
+      }
+    ],
+    "projects": [],
+    "pushes": [],
+    "boards": [],
+    "columns": [],
+    "tasks": [],
+    "activityLogs": [],
+    "comments": [],
+    "notifications": []
+  }
+}

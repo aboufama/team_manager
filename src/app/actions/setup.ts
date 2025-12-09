@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { getCurrentUser } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -21,8 +22,65 @@ export async function createWorkspace(formData: FormData) {
     const name = formData.get("name") as string
     if (!name || name.trim().length === 0) return { error: "Workspace name is required" }
 
-
     try {
+        let userId = user.id
+
+        // Handle first-time user creation or re-linking
+        if (userId === 'pending') {
+            // @ts-ignore - discordId exists on pending user object
+            const discordId = user.discordId
+
+            if (!discordId) {
+                return { error: "Failed to create user: Missing Discord ID" }
+            }
+
+            // Check if user already exists
+            const existingUser = await prisma.user.findUnique({
+                where: { discordId: discordId }
+            })
+
+            if (existingUser) {
+                userId = existingUser.id
+            } else {
+                try {
+                    // Create the user
+                    const newUser = await prisma.user.create({
+                        data: {
+                            name: user.name,
+                            email: user.email,
+                            avatar: user.avatar,
+                            discordId: discordId,
+                            role: 'Admin'
+                        }
+                    })
+                    userId = newUser.id
+                } catch (e: any) {
+                    // Race condition: User created by another request?
+                    if (e.code === 'P2002') {
+                        const existingUserRetry = await prisma.user.findUnique({
+                            where: { discordId: discordId }
+                        })
+                        if (existingUserRetry) {
+                            userId = existingUserRetry.id
+                        } else {
+                            throw e
+                        }
+                    } else {
+                        throw e
+                    }
+                }
+            }
+
+            // Set session cookie
+            const cookieStore = await cookies()
+            cookieStore.set('user_id', userId, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/'
+            })
+        }
+
         let workspace = null
         let retries = 0
         const MAX_RETRIES = 10
@@ -34,7 +92,7 @@ export async function createWorkspace(formData: FormData) {
                     data: {
                         name,
                         inviteCode: code,
-                        ownerId: user.id
+                        ownerId: userId
                     }
                 })
             } catch (e: any) {
@@ -51,7 +109,7 @@ export async function createWorkspace(formData: FormData) {
         // Create Member
         await prisma.workspaceMember.create({
             data: {
-                userId: user.id,
+                userId: userId,
                 workspaceId: workspace.id,
                 role: 'Admin',
                 name: user.name
@@ -60,7 +118,7 @@ export async function createWorkspace(formData: FormData) {
 
         // Update user to be Admin of this workspace
         await prisma.user.update({
-            where: { id: user.id },
+            where: { id: userId },
             data: {
                 workspaceId: workspace.id,
                 role: 'Admin'
@@ -69,9 +127,9 @@ export async function createWorkspace(formData: FormData) {
 
         return { success: true, workspaceId: workspace.id }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Create workspace error:", error)
-        return { error: "Failed to create workspace. Please try again." }
+        return { error: `Failed to create workspace: ${error.message || error}` }
     }
 }
 

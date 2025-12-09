@@ -168,7 +168,7 @@ export default async function DashboardPage() {
             where,
             include: {
                 column: { include: { board: { include: { project: { select: { id: true, name: true } } } } } },
-                sprint: { select: { id: true, name: true, color: true } }
+                push: { select: { id: true, name: true, color: true } }
             },
             orderBy: { startDate: 'asc' },
             take: 50 // Same limit as before
@@ -255,7 +255,7 @@ export default async function DashboardPage() {
         endDate: t.endDate,
         column: t.column ? { name: t.column.name } : null,
         project: t.column?.board?.project || null,
-        sprint: t.sprint || null
+        push: t.push || null
     }))
 
     return (

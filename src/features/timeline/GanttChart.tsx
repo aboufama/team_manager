@@ -1,28 +1,31 @@
 "use client"
 
-interface Sprint {
+interface Push {
     id: string
     name: string
     startDate: Date | string
-    endDate: Date | string
+    endDate?: Date | string | null
     project: { name: string }
     tasks?: { id: string; title: string }[]
 }
 
 interface GanttChartProps {
-    sprints: Sprint[]
+    pushes: Push[]
 }
 
-export function GanttChart({ sprints }: GanttChartProps) {
-    if (!sprints || sprints.length === 0) {
+export function GanttChart({ pushes }: GanttChartProps) {
+    if (!pushes || pushes.length === 0) {
         return (
             <div className="p-4 text-[11px] text-center text-muted-foreground border border-dashed rounded">
-                No sprints. Create a sprint to see timeline.
+                No pushes. Create a push to see timeline.
             </div>
         )
     }
 
-    const dates = sprints.flatMap(s => [new Date(s.startDate), new Date(s.endDate)])
+    const dates = pushes.flatMap(s => [
+        new Date(s.startDate),
+        s.endDate ? new Date(s.endDate) : new Date(new Date(s.startDate).getTime() + 14 * 24 * 60 * 60 * 1000) // Default 2 weeks if no end
+    ])
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())))
     const maxDate = new Date(Math.max(...dates.map(d => d.getTime())))
 
@@ -51,24 +54,28 @@ export function GanttChart({ sprints }: GanttChartProps) {
             )}
 
             <div className="space-y-2">
-                {sprints.map((sprint) => {
-                    const left = getPosition(new Date(sprint.startDate))
-                    const right = getPosition(new Date(sprint.endDate))
+                {pushes.map((push) => {
+                    const pushEnd = push.endDate
+                        ? new Date(push.endDate)
+                        : new Date(new Date(push.startDate).getTime() + 14 * 24 * 60 * 60 * 1000)
+
+                    const left = getPosition(new Date(push.startDate))
+                    const right = getPosition(pushEnd)
                     const width = Math.max(right - left, 2)
-                    const taskNames = sprint.tasks?.slice(0, 3).map(t => t.title).join(', ') || ''
+                    const taskNames = push.tasks?.slice(0, 3).map(t => t.title).join(', ') || ''
 
                     return (
-                        <div key={sprint.id} className="relative h-7 flex items-center">
+                        <div key={push.id} className="relative h-7 flex items-center">
                             <div className="w-20 pr-1 text-[10px] font-medium text-right truncate shrink-0">
-                                {sprint.name}
+                                {push.name}
                             </div>
                             <div className="flex-1 relative h-full">
                                 <div
                                     className="absolute h-5 top-1 rounded bg-primary/80 text-[10px] text-primary-foreground flex items-center px-1.5 gap-1"
                                     style={{ left: `${left}%`, width: `${width}%` }}
-                                    title={taskNames ? `${sprint.project.name}: ${taskNames}` : sprint.project.name}
+                                    title={taskNames ? `${push.project.name}: ${taskNames}` : push.project.name}
                                 >
-                                    <span className="font-medium truncate">{sprint.project.name}</span>
+                                    <span className="font-medium truncate">{push.project.name}</span>
                                     {taskNames && (
                                         <span className="text-primary-foreground/70 truncate text-[9px]">
                                             {taskNames}

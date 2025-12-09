@@ -16,12 +16,12 @@ type CreateTaskInput = {
     assigneeId?: string
     assigneeIds?: string[]
     requireAttachment?: boolean
-    sprintId?: string
+    pushId?: string
 }
 
 export async function createTask(input: CreateTaskInput) {
 
-    const { title, projectId, columnId, startDate, endDate, description, assigneeId, sprintId } = input
+    const { title, projectId, columnId, startDate, endDate, description, assigneeId, pushId } = input
 
     if (!title || !projectId) {
         return { error: 'Title and Project are required' }
@@ -74,7 +74,7 @@ export async function createTask(input: CreateTaskInput) {
             requireAttachment: input.requireAttachment !== undefined ? input.requireAttachment : true,
             startDate: startDate ? new Date(startDate) : null,
             endDate: endDate ? new Date(endDate) : null,
-            sprint: sprintId ? { connect: { id: sprintId } } : undefined
+            push: pushId ? { connect: { id: pushId } } : undefined
         }
 
         // Only connect assignee if provided

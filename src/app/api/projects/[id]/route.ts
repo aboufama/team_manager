@@ -12,7 +12,7 @@ export async function GET(
             where: { id },
             include: {
                 lead: { select: { id: true, name: true } },
-                _count: { select: { sprints: true } }
+                _count: { select: { pushes: true } }
             }
         })
 
@@ -112,13 +112,13 @@ export async function DELETE(
                 where: { projectId: id }
             })
 
-            // Delete tasks in sprints
+            // Delete tasks in pushes
             await tx.task.deleteMany({
-                where: { sprint: { projectId: id } }
+                where: { push: { projectId: id } }
             })
 
-            // Delete sprints
-            await tx.sprint.deleteMany({
+            // Delete pushes
+            await tx.push.deleteMany({
                 where: { projectId: id }
             })
 

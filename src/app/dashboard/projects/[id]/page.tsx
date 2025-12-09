@@ -13,7 +13,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         where: { id },
         include: {
             lead: { select: { id: true, name: true } },
-            sprints: {
+            pushes: {
                 include: {
                     tasks: {
                         select: {
@@ -36,7 +36,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                                             user: { select: { id: true, name: true } }
                                         }
                                     },
-                                    sprint: {
+                                    push: {
                                         select: { id: true, name: true, color: true, status: true }
                                     },
                                     activityLogs: {
@@ -128,17 +128,17 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         role: u.role || 'Member'
     }))
 
-    // Add computed fields to sprints and serialize dates
-    const sprints = project.sprints.map(sprint => ({
-        id: sprint.id,
-        name: sprint.name,
-        startDate: sprint.startDate.toISOString(),
-        endDate: sprint.endDate.toISOString(),
-        status: sprint.status,
-        color: sprint.color,
-        projectId: sprint.projectId,
-        taskCount: sprint.tasks.length,
-        completedCount: sprint.tasks.filter(t => t.column?.name === 'Done').length
+    // Add computed fields to pushes and serialize dates
+    const pushes = project.pushes.map(push => ({
+        id: push.id,
+        name: push.name,
+        startDate: push.startDate.toISOString(),
+        endDate: push.endDate ? push.endDate.toISOString() : '', // Handle optional endDate
+        status: push.status,
+        color: push.color,
+        projectId: push.projectId,
+        taskCount: push.tasks.length,
+        completedCount: push.tasks.filter(t => t.column?.name === 'Done').length
     }))
 
     return (
@@ -150,7 +150,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             }}
             board={board}
             users={users}
-            sprints={sprints}
+            pushes={pushes}
         />
     )
 }

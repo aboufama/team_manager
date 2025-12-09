@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { updateTaskStatus } from "@/app/actions/kanban"
-import { deleteSprint, assignTaskToSprint } from "@/app/actions/sprints"
+import { deletePush, assignTaskToPush } from "@/app/actions/pushes"
 import { Column } from "./Column"
 import { TaskCard } from "./TaskCard"
 import { TaskDialog } from "./TaskDialog"
@@ -52,14 +52,14 @@ type Task = {
     activityLogs?: { changedByName: string; createdAt: Date | string }[]
     comments?: { createdAt: Date | string }[]
     attachments?: { id: string; createdAt: Date | string }[]
-    sprint?: { id: string; name: string; color: string; status: string } | null
+    push?: { id: string; name: string; color: string; status: string } | null
 }
 
-type SprintType = {
+type PushType = {
     id: string
     name: string
     startDate: Date | string
-    endDate: Date | string
+    endDate: Date | string | null
     status: string
     color: string
     projectId: string
@@ -81,25 +81,25 @@ type BoardProps = {
     }
     projectId: string
     users: { id: string; name: string }[]
-    sprints?: SprintType[]
+    pushes?: PushType[]
     highlightTaskId?: string | null
 }
 
-export function Board({ board, projectId, users, sprints = [], highlightTaskId }: BoardProps) {
+export function Board({ board, projectId, users, pushes = [], highlightTaskId }: BoardProps) {
     const router = useRouter()
     const [columns, setColumns] = useState<ColumnData[]>(board.columns)
     const [activeTask, setActiveTask] = useState<Task | null>(null)
     const [userRole, setUserRole] = useState<string>('Member')
     const [mounted, setMounted] = useState(false)
     const [creatingColumnId, setCreatingColumnId] = useState<string | null>(null)
-    const [creatingSprintId, setCreatingSprintId] = useState<string | null>(null)
+    const [creatingPushId, setCreatingPushId] = useState<string | null>(null)
     const [previewingTask, setPreviewingTask] = useState<Task | null>(null)
     const [editingTask, setEditingTask] = useState<Task | null>(null)
     const [isDragging, setIsDragging] = useState(false)
     const [isPersisting, setIsPersisting] = useState(false)
     const [flashingColumnId, setFlashingColumnId] = useState<string | null>(null)
-    const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(() =>
-        new Set(sprints.filter(s => s.status === 'Completed').map(s => s.id))
+    const [collapsedPushes, setCollapsedPushes] = useState<Set<string>>(() =>
+        new Set(pushes.filter(p => p.status === 'Completed').map(p => p.id))
     )
     const { toast } = useToast()
 
@@ -109,7 +109,7 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         toColumnId: string
         fromColumnId: string
         isResubmit: boolean
-        sprintId: string | null
+        pushId: string | null
         dropPosition?: { x: number, y: number }
     } | null>(null)
 
@@ -122,10 +122,10 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         toColumnId: string
         fromColumnId: string
         toColumnName: string
-        sprintId: string | null
+        pushId: string | null
     } | null>(null)
 
-    const [deleteSprintId, setDeleteSprintId] = useState<string | null>(null)
+    const [deletePushId, setDeletePushId] = useState<string | null>(null)
 
     const isAdmin = userRole === 'Admin' || userRole === 'Team Lead'
     const { triggerConfetti } = useConfetti()
@@ -159,17 +159,17 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         const task = columns.flatMap(c => c.tasks).find(t => t.id === highlightTaskId)
         if (!task) return
 
-        // If task is in a sprint, check if it's collapsed
-        // (For Kanban board, tasks have a sprint property)
-        // If task has no sprint (Backlog), sprintId might be undefined/null effectively
-        const sprintId = task.sprint?.id || ((task as any).sprintId as string) || 'backlog'
+        // If task is in a push, check if it's collapsed
+        // (For Kanban board, tasks have a push property)
+        // If task has no push (Backlog), pushId might be undefined/null effectively
+        const pushId = task.push?.id || ((task as any).pushId as string) || 'backlog'
 
-        // 1. Ensure sprint is expanded
+        // 1. Ensure push is expanded
         let didExpand = false
-        setCollapsedSprints(prev => {
-            if (sprintId && prev.has(sprintId)) {
+        setCollapsedPushes(prev => {
+            if (pushId && prev.has(pushId)) {
                 const next = new Set(prev)
-                next.delete(sprintId)
+                next.delete(pushId)
                 didExpand = true
                 return next
             }
@@ -220,8 +220,8 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
 
                 const reviewCol = columns.find(c => c.name === 'Review')
                 if (reviewCol && task) {
-                    const sprintId = task.sprint?.id || 'backlog'
-                    setFlashingColumnId(`${sprintId}::${reviewCol.id}`)
+                    const pushId = task.push?.id || 'backlog'
+                    setFlashingColumnId(`${pushId}::${reviewCol.id}`)
                     setTimeout(() => setFlashingColumnId(null), 1000)
                 }
 
@@ -278,18 +278,18 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         const isOverTask = over.data.current?.type === "Task"
 
         let targetColumnId: string | null = null
-        let targetSprintId: string | null = null
+        let targetPushId: string | null = null
 
         if (isOverColumn && overId.includes('::')) {
-            const [sprintPart, colPart] = overId.split('::')
-            targetSprintId = sprintPart === 'backlog' ? null : sprintPart
+            const [pushPart, colPart] = overId.split('::')
+            targetPushId = pushPart === 'backlog' ? null : pushPart
             targetColumnId = colPart
         } else if (isOverTask) {
             const overColumn = columns.find(col => col.tasks.some(t => t.id === overId))
             if (overColumn) {
                 targetColumnId = overColumn.id
                 const overTask = overColumn.tasks.find(t => t.id === overId)
-                targetSprintId = overTask?.sprint?.id || null
+                targetPushId = overTask?.push?.id || null
             }
         }
 
@@ -317,11 +317,11 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
 
         // Check if anything changed
         const originalColumnId = activeTask.columnId
-        const originalSprintId = activeTask.sprint?.id || null
+        const originalPushId = activeTask.push?.id || null
         const columnChanged = originalColumnId !== targetColumnId
-        const sprintChanged = originalSprintId !== targetSprintId
+        const pushChanged = originalPushId !== targetPushId
 
-        if (!columnChanged && !sprintChanged) {
+        if (!columnChanged && !pushChanged) {
             setIsDragging(false)
             setActiveTask(null)
             return
@@ -330,14 +330,14 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         const startColName = sourceColumn.name
         const endColName = targetColumn.name
 
-        // Handle special dialogs (Revert optimistic update if cancelled? simpler to just not optimize these yet)
+        // Handle special dialogs
         if (endColName === 'Review' && startColName !== 'Review') {
             setReviewDialog({
                 taskId: activeId,
                 toColumnId: targetColumnId,
                 fromColumnId: originalColumnId!,
                 isResubmit: startColName === 'Done',
-                sprintId: targetSprintId,
+                pushId: targetPushId,
                 dropPosition: dropCenter
             })
             setIsDragging(false)
@@ -351,7 +351,7 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
                 toColumnId: targetColumnId,
                 fromColumnId: originalColumnId!,
                 toColumnName: endColName,
-                sprintId: targetSprintId
+                pushId: targetPushId
             })
             setIsDragging(false)
             setActiveTask(null)
@@ -363,9 +363,6 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         const newColumns = columns.map(col => {
             // Handle Source Column (Remove Task)
             if (col.id === sourceColumn.id) {
-                // If moving within same column, we need to handle it carefully,
-                // but early return handled that case if not sorting.
-                // Assuming distinct columns for now based on bug report.
                 return {
                     ...col,
                     tasks: col.tasks.filter(t => t.id !== activeId)
@@ -386,11 +383,11 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
                 const updatedTask = {
                     ...activeTask,
                     columnId: targetColumnId,
-                    sprint: targetSprintId ? {
-                        id: targetSprintId,
-                        name: activeTask.sprint?.name || 'Sprint',
-                        color: activeTask.sprint?.color || '#000',
-                        status: activeTask.sprint?.status || 'active'
+                    push: targetPushId ? {
+                        id: targetPushId,
+                        name: activeTask.push?.name || 'Push',
+                        color: activeTask.push?.color || '#000',
+                        status: activeTask.push?.status || 'active'
                     } : null
                 }
 
@@ -417,11 +414,11 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         setIsPersisting(true)
         let success = true
         try {
-            if (sprintChanged) {
-                const sprintResult = await assignTaskToSprint(activeId, targetSprintId)
-                if (sprintResult.error) {
+            if (pushChanged) {
+                const pushResult = await assignTaskToPush(activeId, targetPushId)
+                if (pushResult.error) {
                     success = false
-                    toast({ title: "Error", description: sprintResult.error, variant: "destructive" })
+                    toast({ title: "Error", description: pushResult.error, variant: "destructive" })
                 }
             }
 
@@ -456,17 +453,17 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         // 1. Optimistic Update
         const task = columns.flatMap(c => c.tasks).find(t => t.id === reviewDialog.taskId)
         if (task) {
-            let newSprint = task.sprint
-            if (reviewDialog.sprintId === null) {
-                newSprint = null
-            } else if (reviewDialog.sprintId !== undefined && reviewDialog.sprintId !== task.sprint?.id) {
-                const sprintData = sprints.find(s => s.id === reviewDialog.sprintId)
-                if (sprintData) {
-                    newSprint = {
-                        id: sprintData.id,
-                        name: sprintData.name,
-                        color: sprintData.color,
-                        status: sprintData.status
+            let newPush = task.push
+            if (reviewDialog.pushId === null) {
+                newPush = null
+            } else if (reviewDialog.pushId !== undefined && reviewDialog.pushId !== task.push?.id) {
+                const pushData = pushes.find(p => p.id === reviewDialog.pushId)
+                if (pushData) {
+                    newPush = {
+                        id: pushData.id,
+                        name: pushData.name,
+                        color: pushData.color,
+                        status: pushData.status
                     }
                 }
             }
@@ -474,7 +471,7 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
             const updatedTask = {
                 ...task,
                 columnId: reviewDialog.toColumnId,
-                sprint: newSprint
+                push: newPush
             }
 
             const optimColumns = columns.map(col => {
@@ -490,8 +487,8 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         }
 
         // 2. Server Persistence
-        if (reviewDialog.sprintId !== undefined) {
-            await assignTaskToSprint(reviewDialog.taskId, reviewDialog.sprintId)
+        if (reviewDialog.pushId !== undefined) {
+            await assignTaskToPush(reviewDialog.taskId, reviewDialog.pushId)
         }
 
         const result = await updateTaskStatus(reviewDialog.taskId, reviewDialog.toColumnId, projectId)
@@ -528,17 +525,17 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         // 1. Optimistic Update
         const task = columns.flatMap(c => c.tasks).find(t => t.id === doneMoveDialog.taskId)
         if (task) {
-            let newSprint = task.sprint
-            if (doneMoveDialog.sprintId === null) {
-                newSprint = null
-            } else if (doneMoveDialog.sprintId !== undefined && doneMoveDialog.sprintId !== task.sprint?.id) {
-                const sprintData = sprints.find(s => s.id === doneMoveDialog.sprintId)
-                if (sprintData) {
-                    newSprint = {
-                        id: sprintData.id,
-                        name: sprintData.name,
-                        color: sprintData.color,
-                        status: sprintData.status
+            let newPush = task.push
+            if (doneMoveDialog.pushId === null) {
+                newPush = null
+            } else if (doneMoveDialog.pushId !== undefined && doneMoveDialog.pushId !== task.push?.id) {
+                const pushData = pushes.find(p => p.id === doneMoveDialog.pushId)
+                if (pushData) {
+                    newPush = {
+                        id: pushData.id,
+                        name: pushData.name,
+                        color: pushData.color,
+                        status: pushData.status
                     }
                 }
             }
@@ -546,7 +543,7 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
             const updatedTask = {
                 ...task,
                 columnId: doneMoveDialog.toColumnId,
-                sprint: newSprint
+                push: newPush
             }
 
             const optimColumns = columns.map(col => {
@@ -562,8 +559,8 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         }
 
         // 2. Server Persistence
-        if (doneMoveDialog.sprintId !== undefined) {
-            await assignTaskToSprint(doneMoveDialog.taskId, doneMoveDialog.sprintId)
+        if (doneMoveDialog.pushId !== undefined) {
+            await assignTaskToPush(doneMoveDialog.taskId, doneMoveDialog.pushId)
         }
 
         await saveToServer(doneMoveDialog.taskId, doneMoveDialog.toColumnId)
@@ -579,68 +576,68 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         setIsDragging(false)
     }
 
-    const toggleSprintCollapse = (sprintId: string) => {
-        setCollapsedSprints(prev => {
+    const togglePushCollapse = (pushId: string) => {
+        setCollapsedPushes(prev => {
             const next = new Set(prev)
-            if (next.has(sprintId)) next.delete(sprintId)
-            else next.add(sprintId)
+            if (next.has(pushId)) next.delete(pushId)
+            else next.add(pushId)
             return next
         })
     }
 
-    const getSprintTasks = (sprintId: string | null) => {
+    const getPushTasks = (pushId: string | null) => {
         return columns.map(col => ({
             ...col,
             tasks: col.tasks.filter(task =>
-                sprintId === null
-                    ? !task.sprint
-                    : task.sprint?.id === sprintId
+                pushId === null
+                    ? !task.push
+                    : task.push?.id === pushId
             )
         }))
     }
 
-    const isSprintComplete = (sprintId: string) => {
-        const sprintCols = getSprintTasks(sprintId)
-        const doneCol = sprintCols.find(c => c.name === 'Done')
-        const totalTasks = sprintCols.reduce((sum, c) => sum + c.tasks.length, 0)
+    const isPushComplete = (pushId: string) => {
+        const pushCols = getPushTasks(pushId)
+        const doneCol = pushCols.find(c => c.name === 'Done')
+        const totalTasks = pushCols.reduce((sum, c) => sum + c.tasks.length, 0)
         return totalTasks > 0 && doneCol?.tasks.length === totalTasks
     }
 
-    const handleDeleteSprint = (e: React.MouseEvent, sprintId: string) => {
+    const handleDeletePush = (e: React.MouseEvent, pushId: string) => {
         e.stopPropagation()
-        setDeleteSprintId(sprintId)
+        setDeletePushId(pushId)
     }
 
-    const confirmDeleteSprint = async () => {
-        if (!deleteSprintId) return
+    const confirmDeletePush = async () => {
+        if (!deletePushId) return
 
-        const result = await deleteSprint(deleteSprintId, projectId)
+        const result = await deletePush(deletePushId, projectId)
         if (result.error) {
             toast({ title: "Error", description: result.error, variant: "destructive" })
         } else {
-            toast({ title: "Sprint Deleted", description: "The sprint has been removed." })
+            toast({ title: "Push Deleted", description: "The push has been removed." })
         }
-        setDeleteSprintId(null)
+        setDeletePushId(null)
     }
 
-    const renderSprintBoard = (sprintColumns: ColumnData[], sprintId: string | null) => (
+    const renderPushBoard = (pushColumns: ColumnData[], pushId: string | null) => (
         <div className="flex flex-col gap-3 md:grid md:grid-flow-col md:auto-cols-[minmax(0,1fr)] min-h-[200px] md:min-h-[300px]">
-            {sprintColumns.sort((a, b) => a.order - b.order).map(col => (
+            {pushColumns.sort((a, b) => a.order - b.order).map(col => (
                 <Column
-                    key={`${sprintId || 'backlog'}-${col.id}`}
+                    key={`${pushId || 'backlog'}-${col.id}`}
                     column={col}
                     projectId={projectId}
                     users={users}
                     onEditTask={setPreviewingTask}
                     onAddTask={(col.name === 'Todo' || col.name === 'To Do') ? () => {
                         setCreatingColumnId(col.id)
-                        setCreatingSprintId(sprintId)
+                        setCreatingPushId(pushId)
                     } : undefined}
                     isDoneColumn={col.name === 'Done'}
                     isReviewColumn={col.name === 'Review'}
                     userRole={userRole}
-                    isFlashing={flashingColumnId === `${sprintId || 'backlog'}::${col.id}`}
-                    sprintId={sprintId}
+                    isFlashing={flashingColumnId === `${pushId || 'backlog'}::${col.id}`}
+                    pushId={pushId}
                     highlightTaskId={highlightTaskId}
                 />
             ))}
@@ -651,28 +648,28 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
             <div className="flex flex-col h-full overflow-y-auto">
                 <div className="flex-1 p-4 space-y-4">
-                    {sprints.length === 0 && (
+                    {pushes.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-[50vh] text-muted-foreground border-2 border-dashed rounded-xl m-4 bg-muted/10">
-                            <p className="text-lg font-medium">No sprints yet...</p>
-                            <p className="text-sm mt-1">Create a sprint to get started</p>
+                            <p className="text-lg font-medium">No pushes yet...</p>
+                            <p className="text-sm mt-1">Create a push to get started</p>
                         </div>
                     )}
 
-                    {[...sprints].sort((a, b) => {
-                        const aComplete = isSprintComplete(a.id)
-                        const bComplete = isSprintComplete(b.id)
+                    {[...pushes].sort((a, b) => {
+                        const aComplete = isPushComplete(a.id)
+                        const bComplete = isPushComplete(b.id)
                         if (aComplete === bComplete) return 0
                         return aComplete ? 1 : -1
-                    }).map(sprint => {
-                        const sprintColumns = getSprintTasks(sprint.id)
-                        const isComplete = isSprintComplete(sprint.id)
-                        const isCollapsed = collapsedSprints.has(sprint.id)
+                    }).map(push => {
+                        const pushColumns = getPushTasks(push.id)
+                        const isComplete = isPushComplete(push.id)
+                        const isCollapsed = collapsedPushes.has(push.id)
 
                         return (
                             <Collapsible
-                                key={sprint.id}
+                                key={push.id}
                                 open={!isCollapsed}
-                                onOpenChange={() => toggleSprintCollapse(sprint.id)}
+                                onOpenChange={() => togglePushCollapse(push.id)}
                                 className="group"
                             >
                                 <div className="rounded-lg border bg-card transition-all duration-200 shadow-sm hover:shadow-md data-[state=open]:shadow-sm">
@@ -680,21 +677,21 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
                                         <button className={`w-full flex items-center justify-between p-4 transition-colors rounded-t-lg group-data-[state=closed]:rounded-lg relative overflow-hidden ${isComplete ? 'bg-green-100 dark:bg-green-900/20 hover:bg-green-200/50 dark:hover:bg-green-900/30' : 'hover:bg-accent/50'}`}>
                                             <div className="flex items-center gap-4">
                                                 <div className="flex items-center gap-3 flex-wrap">
-                                                    <span className="font-semibold text-lg tracking-tight">{sprint.name}</span>
+                                                    <span className="font-semibold text-lg tracking-tight">{push.name}</span>
                                                     {isComplete && (
                                                         <span className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 rounded-full ring-1 ring-inset ring-green-600/20">
                                                             <CheckCircle2 className="w-3.5 h-3.5" />
-                                                            Completed on {new Date(sprint.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                            Completed on {push.endDate ? new Date(push.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Unknown'}
                                                         </span>
                                                     )}
                                                     {!isComplete && (
                                                         <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
                                                             <span className="bg-muted/50 px-2 py-0.5 rounded">
-                                                                {new Date(sprint.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} - {new Date(sprint.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                                {new Date(push.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} - {push.endDate ? new Date(push.endDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Ongoing'}
                                                             </span>
                                                             <span>•</span>
                                                             <span>
-                                                                {sprint.completedCount} of {sprint.taskCount} tasks completed
+                                                                {push.completedCount} of {push.taskCount} tasks completed
                                                             </span>
                                                         </div>
                                                     )}
@@ -706,9 +703,9 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
                                                     {isAdmin && (
                                                         <div
                                                             role="button"
-                                                            onClick={(e) => handleDeleteSprint(e, sprint.id)}
+                                                            onClick={(e) => handleDeletePush(e, push.id)}
                                                             className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors relative z-10"
-                                                            title="Delete Sprint"
+                                                            title="Delete Push"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </div>
@@ -725,7 +722,7 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
                                     <CollapsibleContent>
                                         <div className="p-4 pt-0 border-t bg-muted/10">
                                             <div className="pt-4">
-                                                {renderSprintBoard(sprintColumns, sprint.id)}
+                                                {renderPushBoard(pushColumns, push.id)}
                                             </div>
                                         </div>
                                     </CollapsibleContent>
@@ -781,7 +778,7 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
                     projectId={projectId}
                     users={users}
                     columnId={creatingColumnId}
-                    sprintId={creatingSprintId}
+                    pushId={creatingPushId}
                     open={true}
                     onOpenChange={(open) => !open && setCreatingColumnId(null)}
                 />
@@ -826,21 +823,21 @@ export function Board({ board, projectId, users, sprints = [], highlightTaskId }
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={!!deleteSprintId} onOpenChange={(open) => !open && setDeleteSprintId(null)}>
+            <AlertDialog open={!!deletePushId} onOpenChange={(open) => !open && setDeletePushId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Sprint</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Push</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete this sprint? All tasks in this sprint will be moved to the backlog (unassigned). This action cannot be undone.
+                            Are you sure you want to delete this push? All tasks in this push will be moved to the backlog (unassigned). This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteSprintId(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setDeletePushId(null)}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={confirmDeleteSprint}
+                            onClick={confirmDeletePush}
                             className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                         >
-                            Delete Sprint
+                            Delete Push
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
