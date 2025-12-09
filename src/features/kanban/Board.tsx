@@ -80,7 +80,7 @@ type BoardProps = {
         columns: ColumnData[]
     }
     projectId: string
-    users: { id: string; name: string }[]
+    users: { id: string; name: string; isProjectMember?: boolean }[]
     pushes?: PushType[]
     highlightTaskId?: string | null
 }

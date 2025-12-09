@@ -24,6 +24,7 @@ model User {
   memberships WorkspaceMember[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  chatTyping ChatTyping?
 }
 
 model Subteam {
@@ -257,3 +258,8 @@ model GeneralChatMessage {
   @@index([workspaceId])
 }
 
+model ChatTyping {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+}

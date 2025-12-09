@@ -66,7 +66,7 @@ type ProjectContentProps = {
             tasks: TaskType[]
         }[]
     } | null
-    users: { id: string; name: string }[]
+    users: { id: string; name: string; role?: string; isProjectMember?: boolean }[]
     pushes?: PushType[]
 }
 

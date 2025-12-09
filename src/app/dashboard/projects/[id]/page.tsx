@@ -13,6 +13,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         where: { id },
         include: {
             lead: { select: { id: true, name: true } },
+            members: { select: { userId: true } },
             pushes: {
                 include: {
                     tasks: {
@@ -122,10 +123,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         orderBy: { name: 'asc' },
         select: { id: true, name: true, role: true }
     }) : []
+
+    const projectMemberIds = new Set(project.members.map(m => m.userId))
+
     const users = usersRaw.map(u => ({
         id: u.id,
         name: u.name || 'Unknown',
-        role: u.role || 'Member'
+        role: u.role || 'Member',
+        isProjectMember: projectMemberIds.has(u.id)
     }))
 
     // Add computed fields to pushes and serialize dates

@@ -54,7 +54,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
     columnId?: string
     projectId: string
     pushId?: string | null
-    users: { id: string; name: string }[]
+    users: { id: string; name: string; isProjectMember?: boolean }[]
     task?: TaskType | null
     open?: boolean
     onOpenChange?: (open: boolean) => void
@@ -70,6 +70,15 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
 
 
     const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+
+    // Sort users: project members first, then alphabetical
+    const sortedUsers = useMemo(() => {
+        return [...users].sort((a, b) => {
+            if (a.isProjectMember && !b.isProjectMember) return -1
+            if (!a.isProjectMember && b.isProjectMember) return 1
+            return a.name.localeCompare(b.name)
+        })
+    }, [users])
 
     const [title, setTitle] = useState(task?.title || "")
     const [description, setDescription] = useState(task?.description || "")
@@ -362,7 +371,7 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[260px] p-0" align="start">
                                             <div className="max-h-[240px] overflow-y-auto p-1">
-                                                {users.map(u => (
+                                                {sortedUsers.map(u => (
                                                     <div
                                                         key={u.id}
                                                         className="flex items-center space-x-2 px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
@@ -373,8 +382,9 @@ export function TaskDialog({ columnId, projectId, pushId, users, task, open: ext
                                                             onCheckedChange={() => toggleAssignee(u.id)}
                                                             id={`user-${u.id}`}
                                                         />
-                                                        <label htmlFor={`user-${u.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer">
-                                                            {u.name}
+                                                        <label htmlFor={`user-${u.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer flex justify-between">
+                                                            <span>{u.name}</span>
+                                                            {u.isProjectMember && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Member</span>}
                                                         </label>
                                                     </div>
                                                 ))}
