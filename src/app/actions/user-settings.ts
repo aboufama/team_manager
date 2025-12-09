@@ -52,3 +52,26 @@ export async function updateDiscordChannel(channelId: string) {
         return { error: "Failed to update Discord channel" }
     }
 }
+
+import { cookies } from "next/headers"
+
+export async function deleteAccount() {
+    const user = await getCurrentUser()
+    if (!user) return { error: "Not authenticated" }
+
+    try {
+        await prisma.user.delete({
+            where: { id: user.id }
+        })
+
+        const cookieStore = await cookies()
+        cookieStore.delete('user_id')
+        cookieStore.delete('discord_user')
+        cookieStore.delete('discord_token')
+
+        return { success: true }
+    } catch (error) {
+        console.error("Delete account error:", error)
+        return { error: "Failed to delete account" }
+    }
+}

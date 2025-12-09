@@ -6,7 +6,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Plus, Users, Building2, Loader2, ArrowRight, FolderKanban, CheckCircle, Info, LogOut, Pencil, Check, X } from "lucide-react"
 import { createWorkspace, joinWorkspace, switchWorkspace } from "@/app/actions/setup"
-import { updateDisplayName } from "@/app/actions/user-settings"
+import { updateDisplayName, deleteAccount } from "@/app/actions/user-settings"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -221,6 +221,24 @@ export function WorkspaceSelector({ user }: { user: any }) {
                         <LogOut className="w-4 h-4" /> <span className="hidden md:inline">Log Out</span>
                     </Button>
                 </div>
+            </div>
+
+            {/* Account Management */}
+            <div className="flex justify-end pt-2">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-zinc-400 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => {
+                        if (confirm("Are you sure you want to permanently delete your account? This cannot be undone.")) {
+                            deleteAccount().then(() => {
+                                window.location.href = '/'
+                            })
+                        }
+                    }}
+                >
+                    Delete Account
+                </Button>
             </div>
 
             {/* Grid */}

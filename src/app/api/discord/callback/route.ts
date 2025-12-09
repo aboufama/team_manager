@@ -94,6 +94,7 @@ export async function GET(request: Request) {
                     avatar: discordUser.avatar ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png` : null,
                     discordId: discordUser.id,
                     role: 'Member', // Default role
+                    hasOnboarded: false, // Ensure this is explicit
                 },
                 include: { workspace: true }
             })
@@ -115,6 +116,11 @@ export async function GET(request: Request) {
             maxAge: 60 * 60 * 24 * 7,
             path: '/',
         })
+
+        // Check onboarding status
+        if (!user.hasOnboarded) {
+            return NextResponse.redirect(new URL('/onboarding', request.url))
+        }
 
         // Redirect to Workspace Selection
         return NextResponse.redirect(new URL('/workspaces', request.url))
