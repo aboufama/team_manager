@@ -12,7 +12,7 @@ async function main() {
         await prisma.activityLog.deleteMany()
         await prisma.comment.deleteMany()
         await prisma.task.deleteMany()
-        await prisma.sprint.deleteMany()
+        await prisma.push.deleteMany()
         await prisma.whiteboard.deleteMany()
         await prisma.column.deleteMany()
         await prisma.board.deleteMany()
@@ -110,35 +110,35 @@ async function main() {
             'Done': columns.find(c => c.name === 'Done')!.id,
         }
 
-        // Create Sprints
-        const sprints = []
+        // Create Pushes
+        const pushes = []
         const today = new Date()
 
-        // Generate 6 sprints: 2 past, 1 current, 3 future
+        // Generate 6 pushes: 2 past, 1 current, 3 future
         for (let i = -2; i < 4; i++) {
             const start = new Date(today)
-            start.setDate(today.getDate() + (i * 14)) // 2 weeks per sprint
+            start.setDate(today.getDate() + (i * 14)) // 2 weeks per push
             const end = new Date(start)
             end.setDate(start.getDate() + 13)
 
-            const sprintStatus = i < 0 ? 'Completed' : (i === 0 ? 'Active' : 'Planned')
-            const sprintColor = ['#3B82F6', '#10B981', '#F59E0B', '#6366F1', '#EC4899', '#8B5CF6'][i + 2]
+            const pushStatus = i < 0 ? 'Completed' : (i === 0 ? 'Active' : 'Planned')
+            const pushColor = ['#3B82F6', '#10B981', '#F59E0B', '#6366F1', '#EC4899', '#8B5CF6'][i + 2]
 
-            const sprint = await prisma.sprint.create({
+            const push = await prisma.push.create({
                 data: {
-                    name: `Sprint ${i + 3} (${pData.name})`,
-                    status: sprintStatus,
+                    name: `Push ${i + 3} (${pData.name})`,
+                    status: pushStatus,
                     startDate: start,
                     endDate: end,
                     projectId: project.id,
-                    color: sprintColor
+                    color: pushColor
                 }
             })
-            sprints.push(sprint)
+            pushes.push(push)
         }
 
         // Generate Tasks
-        // We will create ~50 tasks per project distributed across sprints and backlog
+        // We will create ~50 tasks per project distributed across pushes and backlog
         const taskTitles = [
             'Implement control algorithm', 'Design chassis in CAD', 'Solder PCB components', 'Unit test motor drivers',
             'Write documentation', 'Conduct field test', 'Review safety protocols', 'Update firmware',
@@ -151,16 +151,16 @@ async function main() {
             const title = taskTitles[Math.floor(Math.random() * taskTitles.length)] + ` ${i + 1}`
             const assignee = users[Math.floor(Math.random() * users.length)]
 
-            // 70% chance to be in a sprint, 30% backlog
-            const inSprint = Math.random() > 0.3
-            const sprint = inSprint ? sprints[Math.floor(Math.random() * sprints.length)] : null
+            // 70% chance to be in a push, 30% backlog
+            const inPush = Math.random() > 0.3
+            const push = inPush ? pushes[Math.floor(Math.random() * pushes.length)] : null
 
-            // Random column based on sprint status mostly
+            // Random column based on push status mostly
             let colName = 'Todo'
-            if (sprint) {
-                if (sprint.status === 'Completed') {
+            if (push) {
+                if (push.status === 'Completed') {
                     colName = Math.random() > 0.1 ? 'Done' : 'Review' // Mostly done
-                } else if (sprint.status === 'Active') {
+                } else if (push.status === 'Active') {
                     const r = Math.random()
                     colName = r > 0.5 ? 'In Progress' : (r > 0.2 ? 'Todo' : 'Review')
                 } else {
@@ -172,11 +172,11 @@ async function main() {
 
             const columnId = columnMap[colName as keyof typeof columnMap]
 
-            // Dates based on sprint or near today
+            // Dates based on push or near today
             let start = new Date()
             let end = new Date()
-            if (sprint) {
-                start = new Date(sprint.startDate)
+            if (push) {
+                start = new Date(push.startDate)
                 start.setDate(start.getDate() + Math.floor(Math.random() * 5))
                 end = new Date(start)
                 end.setDate(start.getDate() + Math.floor(Math.random() * 5) + 1)
@@ -190,7 +190,7 @@ async function main() {
                     title: title,
                     description: `This is a randomly generated task description for ${title}. It involves doing strictly important things.`,
                     columnId: columnId,
-                    sprintId: sprint?.id,
+                    pushId: push?.id,
                     assigneeId: assignee.id,
                     startDate: start,
                     endDate: end,
@@ -198,7 +198,7 @@ async function main() {
                 }
             })
         }
-        console.log(`Created project ${project.name} with ${sprints.length} sprints and ~50 tasks`)
+        console.log(`Created project ${project.name} with ${pushes.length} pushes and ~50 tasks`)
     }
 
     // Create default invite code
