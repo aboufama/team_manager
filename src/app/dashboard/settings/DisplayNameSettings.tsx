@@ -24,6 +24,10 @@ export function DisplayNameSettings({ initialName }: DisplayNameSettingsProps) {
             setError("Name cannot be empty")
             return
         }
+        if (!name.trim().includes(' ')) {
+            setError("Please enter your full name (First and Last name)")
+            return
+        }
         setError(null)
         setSuccess(false)
         startTransition(async () => {
@@ -48,7 +52,7 @@ export function DisplayNameSettings({ initialName }: DisplayNameSettingsProps) {
     return (
         <div className="grid gap-2">
             <div className="flex items-center justify-between">
-                <Label>Display Name</Label>
+                <Label>Full Name</Label>
                 {success && (
                     <span className="text-xs text-green-600 flex items-center gap-1">
                         <Check className="h-3 w-3" /> Saved
@@ -61,7 +65,7 @@ export function DisplayNameSettings({ initialName }: DisplayNameSettingsProps) {
                     <Input
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Your display name"
+                        placeholder="First Last"
                         className="flex-1"
                         autoFocus
                         onKeyDown={(e) => {
@@ -99,6 +103,12 @@ export function DisplayNameSettings({ initialName }: DisplayNameSettingsProps) {
                         <Pencil className="h-4 w-4" />
                     </Button>
                 </div>
+            )}
+
+            {isEditing && (
+                <p className="text-xs text-muted-foreground">
+                    Please use your real full name so team members can identify you.
+                </p>
             )}
 
             {error && <p className="text-xs text-red-500">{error}</p>}
