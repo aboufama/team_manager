@@ -145,15 +145,13 @@ export function GeneralChat() {
 
         // If we are at the bottom, stay at the bottom when new messages come in
         if (isAtBottom) {
-            const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement
-            if (viewport) {
-                // Use setTimeout to ensure DOM has updated with new message height
-                setTimeout(() => {
-                    viewport.scrollTop = viewport.scrollHeight
-                }, 10)
-            }
+            const viewport = scrollRef.current
+            // Use setTimeout to ensure DOM has updated with new message height
+            setTimeout(() => {
+                viewport.scrollTop = viewport.scrollHeight
+            }, 10)
         }
-    }, [messages, isAtBottom])
+    }, [messages.length, isAtBottom])
 
     // Scroll listener
     React.useEffect(() => {
@@ -344,7 +342,7 @@ export function GeneralChat() {
             {/* Messages Area */}
             <ScrollAreaPrimitive.Root className="flex-1 bg-background px-1 h-0 relative overflow-hidden">
                 <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overscroll-contain" ref={scrollRef as any}>
-                    <div className="flex flex-col justify-end min-h-full py-2 pl-3 pr-1">
+                    <div className="flex flex-col justify-end min-h-full py-2 pl-3 pr-4">
                         {messages.map((msg, i) => {
                             const previousMsg = messages[i - 1]
                             const isGrouped = shouldGroupMessage(msg, previousMsg)
