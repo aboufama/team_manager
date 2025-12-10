@@ -275,10 +275,10 @@ export default async function DashboardPage() {
                 )}
             </div>
 
-            {/* Main Content - Mobile: stack, Desktop: grid/scroll */}
-            <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-x-auto overflow-y-hidden pb-2">
+            {/* Main Content - Mobile: stack, Desktop: grid - NO HORIZONTAL SCROLL */}
+            <div className="flex-1 min-h-0 flex flex-col lg:grid gap-4 lg:grid-cols-12 overflow-y-auto overflow-x-hidden">
                 {/* 1. My Tasks */}
-                <Card className={`flex flex-col min-h-[300px] lg:min-h-0 shrink-0 ${isAdmin || isTeamLead ? 'lg:w-[350px]' : isMember ? 'lg:w-[500px]' : 'lg:w-[500px]'}`}>
+                <Card className={`flex flex-col min-h-[300px] lg:min-h-0 ${isAdmin || isTeamLead ? 'lg:col-span-6 xl:col-span-3' : 'lg:col-span-6'}`}>
                     <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-sm flex items-center gap-2">
@@ -317,7 +317,7 @@ export default async function DashboardPage() {
 
                 {/* 2. Admin & Team Lead: Pending Reviews */}
                 {(isAdmin || isTeamLead) && (
-                    <Card className="lg:w-[350px] shrink-0 flex flex-col min-h-[250px] lg:min-h-0 overflow-hidden">
+                    <Card className="lg:col-span-6 xl:col-span-3 flex flex-col min-h-[250px] lg:min-h-0 overflow-hidden">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-sm flex items-center gap-2">
@@ -346,7 +346,7 @@ export default async function DashboardPage() {
 
                 {/* 3. Admin & Team Lead: Activity Log */}
                 {(isAdmin || isTeamLead) && (
-                    <Card className="lg:w-[350px] shrink-0 flex flex-col min-h-[250px] lg:min-h-0">
+                    <Card className="lg:col-span-6 xl:col-span-3 flex flex-col min-h-[250px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">
                                 <Activity className="h-4 w-4" />Activity Log
@@ -360,7 +360,7 @@ export default async function DashboardPage() {
 
                 {/* 4. Admin & Team Lead: Metrics */}
                 {(isAdmin || isTeamLead) && (
-                    <Card className="lg:w-[380px] shrink-0 flex flex-col min-h-[300px] lg:min-h-0">
+                    <Card className="lg:col-span-6 xl:col-span-3 flex flex-col min-h-[300px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">
                                 Activity Overview
@@ -381,7 +381,7 @@ export default async function DashboardPage() {
 
                 {/* Member Timeline */}
                 {isMember && (
-                    <Card className="lg:w-[500px] shrink-0 flex flex-col min-h-[300px] lg:min-h-0">
+                    <Card className="lg:col-span-6 flex flex-col min-h-[300px] lg:min-h-0">
                         <CardHeader className="pb-2 px-4 pt-4 shrink-0">
                             <CardTitle className="text-sm flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />My Timeline
