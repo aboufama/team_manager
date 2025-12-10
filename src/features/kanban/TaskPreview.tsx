@@ -704,7 +704,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] md:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false}>
+            <DialogContent className="w-[95vw] md:max-w-2xl h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false}>
                 <div
                     className="flex flex-col h-full w-full relative"
                     onDragOver={handleDragOver}
@@ -765,7 +765,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                 <Collapsible open={taskDetailsExpanded} onOpenChange={setTaskDetailsExpanded}>
                                     <CollapsibleTrigger asChild>
                                         <button className="flex items-center justify-between w-full py-2 px-2 -mx-2 rounded hover:bg-muted/50 transition-colors group">
-                                            <span className="text-xs font-semibold flex items-center gap-1.5">
+                                            <span className="text-xs font-bold text-red-600 flex items-center gap-1.5">
                                                 <FileText className="h-3.5 w-3.5" />
                                                 Task Details
                                             </span>
@@ -775,8 +775,8 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                     <CollapsibleContent className="space-y-3">
                                         {/* Description */}
                                         {task.description && (
-                                            <div className="pt-1">
-                                                <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                            <div className="pt-1 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                                <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words leading-relaxed">
                                                     {task.description.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
                                                         if (part.match(/^https?:\/\//)) {
                                                             return (
