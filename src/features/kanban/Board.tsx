@@ -642,27 +642,29 @@ export function Board({ board, projectId, users, pushes = [], highlightTaskId }:
     }
 
     const renderPushBoard = (pushColumns: ColumnData[], pushId: string | null) => (
-        <div className="flex flex-col gap-3 md:grid md:grid-flow-col md:auto-cols-[minmax(0,1fr)] min-h-[200px] md:min-h-[300px]">
-            {pushColumns.sort((a, b) => a.order - b.order).map(col => (
-                <Column
-                    key={`${pushId || 'backlog'}-${col.id}`}
-                    column={col}
-                    projectId={projectId}
-                    users={users}
-                    onEditTask={setPreviewingTask}
-                    onAddTask={(col.name === 'Todo' || col.name === 'To Do') ? () => {
-                        setCreatingColumnId(col.id)
-                        setCreatingPushId(pushId)
-                    } : undefined}
-                    isDoneColumn={col.name === 'Done'}
-                    isReviewColumn={col.name === 'Review'}
-                    userRole={userRole}
-                    isFlashing={flashingColumnId === `${pushId || 'backlog'}::${col.id}`}
-                    pushId={pushId}
-                    highlightTaskId={highlightTaskId}
-                    currentUserId={userId}
-                />
-            ))}
+        <div className="overflow-x-auto pb-4">
+            <div className="flex flex-col gap-3 md:grid md:grid-flow-col md:auto-cols-[minmax(280px,1fr)] min-h-[200px] md:min-h-[300px] min-w-full">
+                {pushColumns.sort((a, b) => a.order - b.order).map(col => (
+                    <Column
+                        key={`${pushId || 'backlog'}-${col.id}`}
+                        column={col}
+                        projectId={projectId}
+                        users={users}
+                        onEditTask={setPreviewingTask}
+                        onAddTask={(col.name === 'Todo' || col.name === 'To Do') ? () => {
+                            setCreatingColumnId(col.id)
+                            setCreatingPushId(pushId)
+                        } : undefined}
+                        isDoneColumn={col.name === 'Done'}
+                        isReviewColumn={col.name === 'Review'}
+                        userRole={userRole}
+                        isFlashing={flashingColumnId === `${pushId || 'backlog'}::${col.id}`}
+                        pushId={pushId}
+                        highlightTaskId={highlightTaskId}
+                        currentUserId={userId}
+                    />
+                ))}
+            </div>
         </div>
     )
 

@@ -396,7 +396,7 @@ export function GeneralChat() {
                                     <div className="flex flex-col min-w-0 flex-1">
                                         {!isGrouped && (
                                             <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-xs cursor-pointer truncate">
+                                                <span className="font-semibold text-xs truncate">
                                                     {displayName}
                                                 </span>
                                             </div>
