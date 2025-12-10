@@ -772,79 +772,86 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${taskDetailsExpanded ? 'rotate-180' : ''}`} />
                                         </button>
                                     </CollapsibleTrigger>
-                                    <CollapsibleContent className="space-y-3">
-                                        {/* Description */}
-                                        {task.description && (
-                                            <div className="pt-1 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                                <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words leading-relaxed">
-                                                    {task.description.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
-                                                        if (part.match(/^https?:\/\//)) {
-                                                            return (
-                                                                <a
-                                                                    key={i}
-                                                                    href={part}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-primary hover:underline break-all"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    {part}
-                                                                </a>
-                                                            )
-                                                        }
-                                                        return <span key={i}>{part}</span>
-                                                    })}
-                                                </p>
-                                            </div>
-                                        )}
+                                    <CollapsibleContent>
+                                        <div className="border border-red-200/50 rounded-lg bg-red-50/10 p-3 space-y-3 mt-1 text-xs">
+                                            {/* Description */}
+                                            {task.description && (
+                                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                                                    <p className="text-muted-foreground whitespace-pre-wrap break-words leading-relaxed">
+                                                        {task.description.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+                                                            if (part.match(/^https?:\/\//)) {
+                                                                return (
+                                                                    <a
+                                                                        key={i}
+                                                                        href={part}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-primary hover:underline break-all"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        {part}
+                                                                    </a>
+                                                                )
+                                                            }
+                                                            return <span key={i}>{part}</span>
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            )}
 
-                                        {/* Instructions File */}
-                                        {instructionsFile && (
-                                            <div className="border border-red-200/50 rounded-lg bg-red-50/10 p-2.5">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                                                        <FileText className="h-3 w-3" />
-                                                        Instructions File
-                                                    </span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            forceDownload(instructionsFile.url, instructionsFile.name)
-                                                        }}
-                                                        className="h-6 text-[10px] gap-1 px-2 inline-flex items-center hover:bg-muted rounded"
-                                                        title="Download"
+                                            {/* Separator if both exist */}
+                                            {task.description && instructionsFile && (
+                                                <div className="h-px bg-red-200/30" />
+                                            )}
+
+                                            {/* Instructions File */}
+                                            {instructionsFile && (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium text-muted-foreground flex items-center gap-1">
+                                                            <FileText className="h-3 w-3" />
+                                                            Instructions File
+                                                        </span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                forceDownload(instructionsFile.url, instructionsFile.name)
+                                                            }}
+                                                            className="h-5 text-[9px] gap-1 px-2 inline-flex items-center hover:bg-red-100/50 rounded transition-colors"
+                                                            title="Download"
+                                                        >
+                                                            <Download className="h-2.5 w-2.5" />
+                                                            Download
+                                                        </button>
+                                                    </div>
+                                                    <div
+                                                        className="bg-background/50 rounded border border-red-100 overflow-hidden cursor-pointer hover:ring-1 ring-red-200 transition-all"
+                                                        onClick={() => setShowInstructionsFullscreen(true)}
                                                     >
-                                                        <Download className="h-2.5 w-2.5" />
-                                                        Download
-                                                    </button>
-                                                </div>
-                                                <div
-                                                    className="bg-background rounded border overflow-hidden cursor-pointer hover:ring-1 ring-primary/30 transition-all"
-                                                    onClick={() => setShowInstructionsFullscreen(true)}
-                                                >
-                                                    {isImageFile(instructionsFile.name) ? (
-                                                        <img
-                                                            src={instructionsFile.url}
-                                                            alt="Instructions"
-                                                            className="w-full max-h-32 object-contain"
-                                                        />
-                                                    ) : isPdfFile(instructionsFile.name) ? (
-                                                        <div className="h-32 flex items-center justify-center">
-                                                            <iframe
+                                                        {isImageFile(instructionsFile.name) ? (
+                                                            <img
                                                                 src={instructionsFile.url}
-                                                                className="w-full h-full pointer-events-none"
-                                                                title="Instructions PDF"
+                                                                alt="Instructions"
+                                                                className="w-full max-h-32 object-contain"
                                                             />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="p-3 text-center">
-                                                            <FileText className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-                                                            <p className="text-xs font-medium truncate">{instructionsFile.name}</p>
-                                                        </div>
-                                                    )}
+                                                        ) : isPdfFile(instructionsFile.name) ? (
+                                                            <div className="h-32 flex items-center justify-center bg-white">
+                                                                <iframe
+                                                                    src={instructionsFile.url}
+                                                                    className="w-full h-full pointer-events-none opacity-80"
+                                                                    title="Instructions PDF"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="p-3 text-center">
+                                                                <FileText className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+                                                                <p className="text-xs font-medium truncate">{instructionsFile.name}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </CollapsibleContent>
                                 </Collapsible>
                             )}
