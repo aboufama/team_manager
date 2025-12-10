@@ -65,18 +65,18 @@ export function MyTaskCard({ task }: MyTaskCardProps) {
                 )}
 
                 {/* Footer with project and status */}
-                <div className="px-3 pb-2 pl-8 flex items-center justify-between gap-2 text-[10px]">
-                    <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+                <div className="px-3 pb-2 pl-8 flex flex-wrap items-center justify-between gap-y-1 gap-x-2 text-[10px]">
+                    <div className="flex items-center gap-2 text-muted-foreground min-w-0 max-w-full">
                         {task.column?.board?.project && (
-                            <span className="truncate max-w-[80px]">{task.column.board.project.name}</span>
+                            <span className="truncate shrink-1">{task.column.board.project.name}</span>
                         )}
                         <div className="flex items-center gap-1 shrink-0">
                             <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(task.column?.name)}`} />
-                            <span>{task.column?.name || 'Todo'}</span>
+                            <span className="whitespace-nowrap">{task.column?.name || 'Todo'}</span>
                         </div>
                     </div>
                     {isOverdue && (
-                        <Badge variant="destructive" className="text-[9px] h-4 px-1 shrink-0">
+                        <Badge variant="destructive" className="text-[9px] h-4 px-1 shrink-0 ml-auto">
                             <Clock className="w-2.5 h-2.5 mr-0.5" />
                             Overdue
                         </Badge>

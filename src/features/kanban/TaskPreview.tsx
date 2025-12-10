@@ -800,7 +800,7 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
 
                                         {/* Instructions File */}
                                         {instructionsFile && (
-                                            <div className="border rounded-lg bg-muted/30 p-2.5">
+                                            <div className="border border-red-200/50 rounded-lg bg-red-50/10 p-2.5">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
                                                         <FileText className="h-3 w-3" />
