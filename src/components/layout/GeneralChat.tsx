@@ -54,6 +54,7 @@ export function GeneralChat() {
     const [mentionQuery, setMentionQuery] = React.useState<string | null>(null)
     const [mentionIndex, setMentionIndex] = React.useState<number>(-1)
     const [mentionsOpen, setMentionsOpen] = React.useState(false)
+    const [selectedMentionIndex, setSelectedMentionIndex] = React.useState(0)
 
     // Derived mentions list
     const mentions = React.useMemo(() => {
@@ -254,9 +255,19 @@ export function GeneralChat() {
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (mentionQuery !== null && suggestions.length > 0) {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setSelectedMentionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1))
+                return
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setSelectedMentionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0))
+                return
+            }
             if (e.key === 'Tab' || e.key === 'Enter') {
                 e.preventDefault()
-                insertMention(suggestions[0].name)
+                insertMention(suggestions[selectedMentionIndex].name)
                 return
             }
         }
@@ -276,6 +287,7 @@ export function GeneralChat() {
         if (lastWord && lastWord.startsWith('@')) {
             setMentionQuery(lastWord.slice(1)) // Remove @
             setMentionIndex(val.lastIndexOf('@'))
+            setSelectedMentionIndex(0) // Reset selection
         } else {
             setMentionQuery(null)
         }
@@ -509,7 +521,7 @@ export function GeneralChat() {
                                     key={user.id}
                                     className={cn(
                                         "w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-muted transition-colors",
-                                        idx === 0 && "bg-muted/50" // Highlight first option as selected
+                                        idx === selectedMentionIndex && "bg-muted/50" // Highlight selected option
                                     )}
                                     onClick={() => insertMention(user.name)}
                                 >
