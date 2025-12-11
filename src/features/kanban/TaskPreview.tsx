@@ -259,6 +259,8 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     const commentsEndRef = useRef<HTMLDivElement>(null)
     const [uploadProgress, setUploadProgress] = useState<number | null>(null)
     const [uploadingFileName, setUploadingFileName] = useState<string | null>(null)
+    const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+    const deleteTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
 
     // Scroll to bottom on new comments
     useEffect(() => {
@@ -552,22 +554,66 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
     }
 
     const handleDeleteAttachment = async (attachmentId: string) => {
-        setIsSubmitting(true)
-        try {
-            const res = await fetch(`/api/tasks/${task.id}/attachments?attachmentId=${attachmentId}`, {
-                method: 'DELETE'
-            })
-            if (res.ok) {
-                setAttachments(prev => prev.filter(a => a.id !== attachmentId))
-            } else {
-                const error = await res.json().catch(() => ({ error: 'Failed to delete file' }))
-                setCommentError(error.error || 'Failed to delete file')
+        // Optimistically mark as deleting
+        setDeletingIds(prev => new Set(prev).add(attachmentId))
+
+        // clear existing timeout if any (shouldn't happen but for safety)
+        if (deleteTimeouts.current.has(attachmentId)) {
+            clearTimeout(deleteTimeouts.current.get(attachmentId)!)
+        }
+
+        const timeout = setTimeout(async () => {
+            // Actual delete after delay
+            setIsSubmitting(true)
+            try {
+                const res = await fetch(`/api/tasks/${task.id}/attachments?attachmentId=${attachmentId}`, {
+                    method: 'DELETE'
+                })
+                if (res.ok) {
+                    setAttachments(prev => prev.filter(a => a.id !== attachmentId))
+                    // Remove from deleting set
+                    setDeletingIds(prev => {
+                        const next = new Set(prev)
+                        next.delete(attachmentId)
+                        return next
+                    })
+                } else {
+                    const error = await res.json().catch(() => ({ error: 'Failed to delete file' }))
+                    setCommentError(error.error || 'Failed to delete file')
+                    // Revert deleting state
+                    setDeletingIds(prev => {
+                        const next = new Set(prev)
+                        next.delete(attachmentId)
+                        return next
+                    })
+                }
+            } catch (err) {
+                console.error('Delete error:', err)
+                setCommentError('Failed to delete file. Please try again.')
+                // Revert deleting state
+                setDeletingIds(prev => {
+                    const next = new Set(prev)
+                    next.delete(attachmentId)
+                    return next
+                })
+            } finally {
+                setIsSubmitting(false)
+                deleteTimeouts.current.delete(attachmentId)
             }
-        } catch (err) {
-            console.error('Delete error:', err)
-            setCommentError('Failed to delete file. Please try again.')
-        } finally {
-            setIsSubmitting(false)
+        }, 4000) // 4 seconds undo window
+
+        deleteTimeouts.current.set(attachmentId, timeout)
+    }
+
+    const handleUndoDelete = (attachmentId: string) => {
+        if (deleteTimeouts.current.has(attachmentId)) {
+            clearTimeout(deleteTimeouts.current.get(attachmentId)!)
+            deleteTimeouts.current.delete(attachmentId)
+            setDeletingIds(prev => {
+                const next = new Set(prev)
+                next.delete(attachmentId)
+                return next
+            })
         }
     }
 
@@ -901,6 +947,25 @@ export function TaskPreview({ task, open, onOpenChange, onEdit, projectId }: Tas
                                     <div className="flex gap-2 pb-2 min-w-max">
                                         {/* Render all attachments */}
                                         {attachments.map(a => {
+                                            if (deletingIds.has(a.id)) {
+                                                return (
+                                                    <div key={a.id} className="relative group bg-red-100/50 rounded overflow-hidden border border-red-200 shrink-0 w-24 h-24 flex flex-col items-center justify-center gap-1">
+                                                        <span className="text-[10px] text-red-500 font-medium">Deleted</span>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-6 text-[10px] px-2 bg-white hover:bg-white/80"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleUndoDelete(a.id)
+                                                            }}
+                                                        >
+                                                            Undo
+                                                        </Button>
+                                                        <div className="absolute top-0 left-0 w-full h-0.5 bg-red-500 animate-[shrink_4s_linear]" style={{ animationDuration: '4s' }} />
+                                                    </div>
+                                                )
+                                            }
                                             if (isImageFile(a.name)) {
                                                 return (
                                                     <div key={a.id} className="relative group bg-muted/50 rounded overflow-hidden border border-muted shrink-0 w-24 h-24 flex-shrink-0">

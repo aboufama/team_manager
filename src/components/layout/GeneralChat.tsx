@@ -79,21 +79,44 @@ export function GeneralChat() {
         }, 100)
     }
 
-    // Retrieve user identity & members
+    // Retrieve user identity
     React.useEffect(() => {
         fetch('/api/auth/role')
             .then(res => res.json())
             .then(data => setCurrentUser(data))
             .catch(console.error)
-
-        // Using leads endpoint for now as it returns users, ideally specific endpoint for all members
-        fetch('/api/users?role=leads')
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) setMembers(data)
-            })
-            .catch(console.error)
     }, [])
+
+    const fetchMembers = React.useCallback(async () => {
+        try {
+            // Using leads endpoint for now as it returns users, ideally specific endpoint for all members
+            const res = await fetch('/api/users?role=leads')
+            if (res.ok) {
+                const data = await res.json()
+                if (Array.isArray(data)) {
+                    setMembers(prev => {
+                        if (JSON.stringify(prev) !== JSON.stringify(data)) {
+                            return data
+                        }
+                        return prev
+                    })
+                }
+            }
+        } catch (error) {
+            console.error(error)
+        }
+    }, [])
+
+    // Initial fetch
+    React.useEffect(() => {
+        fetchMembers()
+    }, [fetchMembers])
+
+    // Poll for members
+    React.useEffect(() => {
+        const interval = setInterval(fetchMembers, 5000) // Poll every 5 seconds for new users
+        return () => clearInterval(interval)
+    }, [fetchMembers])
 
     const fetchMessages = React.useCallback(async () => {
         try {
@@ -383,7 +406,7 @@ export function GeneralChat() {
                                 >
                                     {isMentioned && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-yellow-500" />}
                                     {!isGrouped ? (
-                                        <Avatar className="w-8 h-8 shrink-0 mt-0.5 cursor-pointer">
+                                        <Avatar className="w-8 h-8 shrink-0 mt-0.5">
                                             <AvatarImage src={displayAvatar || undefined} />
                                             <AvatarFallback className="text-[10px]">
                                                 {displayName[0]}
