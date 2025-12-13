@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getCurrentUser } from "@/lib/auth"
@@ -8,6 +7,12 @@ import { CopyButton } from "./CopyButton"
 import { DiscordChannelSettings } from "./DiscordChannelSettings"
 import { DisplayNameSettings } from "./DisplayNameSettings"
 import prisma from "@/lib/prisma"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { RoleSelect } from "../members/RoleSelect"
+import { ProjectSelect } from "../members/ProjectSelect"
+import { MemberActions } from "../members/MemberActions"
 
 export default async function SettingsPage() {
     const user = await getCurrentUser()
@@ -29,61 +34,201 @@ export default async function SettingsPage() {
         })
     }
 
+    // Fetch Members Data
+    const users = await prisma.user.findMany({
+        where: {
+            memberships: {
+                some: {
+                    workspaceId: user.workspaceId || 'non-existent-id'
+                }
+            }
+        },
+        include: {
+            projectMemberships: {
+                include: {
+                    project: { select: { id: true, name: true } }
+                }
+            }
+        },
+        orderBy: { name: 'asc' }
+    })
+
+    const allProjects = await prisma.project.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' }
+    })
+
     const isAdmin = user.role === 'Admin' || user.role === 'Team Lead'
+    const canChangeRoles = isAdmin
 
     return (
-        <div className="flex flex-col gap-6 md:gap-8 p-4 md:p-6 max-w-2xl">
-            <h1 className="text-xl md:text-2xl font-semibold">Settings</h1>
+        <div className="flex flex-col gap-10 p-6 max-w-4xl mx-auto w-full pb-20">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+                <p className="text-muted-foreground mt-2 text-sm">Manage your account, team, and workspace preferences.</p>
+            </div>
 
-            {/* Profile */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Profile</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <Separator />
+
+            {/* Profile Section */}
+            <section className="space-y-6">
+                <div>
+                    <h2 className="text-lg font-semibold mb-1">Profile</h2>
+                    <p className="text-sm text-muted-foreground">Your personal account settings.</p>
+                </div>
+                <div className="space-y-4 max-w-xl">
                     <DisplayNameSettings initialName={user.name || ''} />
                     <div className="grid gap-2">
                         <Label>Role</Label>
-                        <Input defaultValue={user.role} disabled />
+                        <Input defaultValue={user.role} disabled className="bg-muted" />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </section>
+
+            <Separator />
+
+            {/* Members Section */}
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold mb-1">Team Members</h2>
+                        <p className="text-sm text-muted-foreground">Manage roles and project assignments.</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground">You are:</span>
+                        <Badge variant="secondary">{user.name}</Badge>
+                    </div>
+                </div>
+
+                <div className="border rounded-md overflow-hidden">
+                    {/* Mobile View */}
+                    <div className="md:hidden divide-y">
+                        {users.map((u) => {
+                            const isCurrentUser = u.email === user.email
+                            const assignedProjectIds = u.projectMemberships.map(pm => pm.project.id)
+                            return (
+                                <div key={u.id} className={`p-4 space-y-3 ${isCurrentUser ? 'bg-muted/30' : ''}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm">{u.name}</span>
+                                            {isCurrentUser && <Badge variant="outline" className="text-[10px] h-5">You</Badge>}
+                                        </div>
+                                        <RoleSelect userId={u.id} currentRole={u.role} disabled={!canChangeRoles} />
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                        <span className="truncate max-w-[120px]">{u.email}</span>
+                                        <ProjectSelect
+                                            userId={u.id}
+                                            currentProjectIds={assignedProjectIds}
+                                            allProjects={allProjects}
+                                            disabled={!canChangeRoles}
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {/* Desktop View */}
+                    <div className="hidden md:block">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="w-[200px]">Member</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead className="text-right">Role</TableHead>
+                                    <TableHead className="text-right">Assigned Projects</TableHead>
+                                    {canChangeRoles && <TableHead className="w-[50px]"></TableHead>}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {users.map((u) => {
+                                    const isCurrentUser = u.email === user.email
+                                    const assignedProjectIds = u.projectMemberships.map(pm => pm.project.id)
+
+                                    return (
+                                        <TableRow key={u.id}>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    {u.name}
+                                                    {isCurrentUser && <Badge variant="secondary" className="text-[10px] h-5">You</Badge>}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-xs">{u.email}</TableCell>
+                                            <TableCell className="text-right">
+                                                <RoleSelect userId={u.id} currentRole={u.role} disabled={!canChangeRoles} />
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end">
+                                                    <ProjectSelect
+                                                        userId={u.id}
+                                                        currentProjectIds={assignedProjectIds}
+                                                        allProjects={allProjects}
+                                                        disabled={!canChangeRoles}
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                            {canChangeRoles && (
+                                                <TableCell>
+                                                    <MemberActions
+                                                        userId={u.id}
+                                                        isCurrentUser={isCurrentUser}
+                                                        canRemove={canChangeRoles}
+                                                    />
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+            </section>
+
+            <Separator />
 
             {/* Workspace Settings */}
             {workspace && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">Workspace Settings</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {/* Invite Code */}
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm">Invite Code</Label>
-                                <div className="flex items-center gap-2">
-                                    <code className="flex-1 px-4 py-3 bg-zinc-100 rounded-lg font-mono text-lg tracking-widest select-all text-center">
-                                        {workspace.inviteCode}
-                                    </code>
-                                    <CopyButton text={workspace.inviteCode} />
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Share this code with your team members to let them join this workspace.
-                                </p>
+                <section className="space-y-6">
+                    <div>
+                        <h2 className="text-lg font-semibold mb-1">Workspace</h2>
+                        <p className="text-sm text-muted-foreground">Configuration for {workspace.name}.</p>
+                    </div>
+
+                    <div className="space-y-6 max-w-2xl">
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium">Invite Code</Label>
+                            <div className="flex items-center gap-2">
+                                <code className="flex-1 px-4 py-2.5 bg-muted/50 border rounded-md font-mono text-base tracking-widest text-center select-all">
+                                    {workspace.inviteCode}
+                                </code>
+                                <CopyButton text={workspace.inviteCode} />
                             </div>
+                            <p className="text-xs text-muted-foreground">
+                                Share this code to allow others to join your workspace.
+                            </p>
                         </div>
 
-                        {/* Discord Channel ID */}
-                        <DiscordChannelSettings
-                            initialChannelId={workspace.discordChannelId}
-                            isAdmin={isAdmin}
-                        />
-                    </CardContent>
-                </Card>
-            )}
+                        <Separator className="my-4 border-dashed opacity-50" />
 
-            {/* Danger Zone - Admin Only */}
-            {isAdmin && user.workspaceId && workspace?.name && (
-                <DeleteWorkspace workspaceId={user.workspaceId} workspaceName={workspace.name} />
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium">Discord Integration</Label>
+                            <DiscordChannelSettings
+                                initialChannelId={workspace.discordChannelId}
+                                isAdmin={isAdmin}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Danger Zone */}
+                    {isAdmin && (
+                        <div className="mt-8 pt-6 border-t border-red-100 dark:border-red-900/30">
+                            <h3 className="text-sm font-semibold text-red-600 mb-2">Danger Zone</h3>
+                            <DeleteWorkspace workspaceId={user.workspaceId!} workspaceName={workspace.name} />
+                        </div>
+                    )}
+                </section>
             )}
         </div>
     )

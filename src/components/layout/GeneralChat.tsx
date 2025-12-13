@@ -36,7 +36,7 @@ type User = {
     avatar: string | null
 }
 
-export function GeneralChat() {
+export function GeneralChat({ isExpanded, onToggleExpand }: { isExpanded?: boolean; onToggleExpand?: () => void }) {
     const { toast } = useToast()
     const [messages, setMessages] = React.useState<Message[]>([])
     const [inputValue, setInputValue] = React.useState("")
@@ -45,6 +45,7 @@ export function GeneralChat() {
     const [giphyOpen, setGiphyOpen] = React.useState(false)
     const [searchTerm, setSearchTerm] = React.useState("")
     const [members, setMembers] = React.useState<User[]>([])
+    const hasInitialScrolled = React.useRef(false)
 
     // Scroll state
     const [showScrollButton, setShowScrollButton] = React.useState(false)
@@ -167,19 +168,31 @@ export function GeneralChat() {
         return () => clearInterval(interval)
     }, [fetchMessages])
 
-    // Handle auto-scroll
-    React.useEffect(() => {
-        if (!scrollRef.current) return;
-
-        // If we are at the bottom, stay at the bottom when new messages come in
-        if (isAtBottom) {
-            const viewport = scrollRef.current
-            // Use setTimeout to ensure DOM has updated with new message height
-            setTimeout(() => {
-                viewport.scrollTop = viewport.scrollHeight
-            }, 10)
+    const scrollToBottom = React.useCallback((smooth = true) => {
+        const viewport = scrollRef.current
+        if (viewport) {
+            // Force scroll to huge number to ensure bottom
+            viewport.scrollTo({ top: viewport.scrollHeight + 10000, behavior: smooth ? 'smooth' : 'auto' })
         }
-    }, [messages.length, isAtBottom])
+    }, [])
+
+    // Handle auto-scroll and initial scroll
+    React.useEffect(() => {
+        // If we have messages and haven't scrolled yet, force it.
+        if (!hasInitialScrolled.current && messages.length > 0) {
+            // Immediate scroll
+            scrollToBottom(false)
+
+            // Second attempt after short delay to account for layout shifts/rendering
+            setTimeout(() => {
+                scrollToBottom(false)
+                hasInitialScrolled.current = true
+            }, 100)
+        } else if (isAtBottom && hasInitialScrolled.current) {
+            // Normal auto-scroll for new messages
+            setTimeout(() => scrollToBottom(true), 50)
+        }
+    }, [messages, isAtBottom, scrollToBottom])
 
     // Scroll listener
     React.useEffect(() => {
@@ -188,32 +201,13 @@ export function GeneralChat() {
         const handleScroll = () => {
             const { scrollTop, scrollHeight, clientHeight } = viewport
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-            const atBottom = distanceFromBottom < 50
+            const atBottom = distanceFromBottom < 100 // increased threshold
             setIsAtBottom(atBottom)
             setShowScrollButton(!atBottom)
         }
         viewport.addEventListener('scroll', handleScroll)
         return () => viewport.removeEventListener('scroll', handleScroll)
     }, [])
-
-    // Force scroll to bottom on mount
-    React.useEffect(() => {
-        // Give it a tick to render layout
-        const timer = setTimeout(() => {
-            const viewport = scrollRef.current
-            if (viewport) {
-                viewport.scrollTop = viewport.scrollHeight
-            }
-        }, 100)
-        return () => clearTimeout(timer)
-    }, [])
-
-    const scrollToBottom = () => {
-        const viewport = scrollRef.current
-        if (viewport) {
-            viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
-        }
-    }
 
     const sendMessage = async (content: string, type: "text" | "gif" = "text") => {
         if (!content.trim()) return
@@ -340,8 +334,20 @@ export function GeneralChat() {
             `}</style>
 
             {/* Chat Header with Mentions */}
-            <div className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur z-10 shrink-0 h-14">
-                <span className="font-semibold text-sm">General Chat</span>
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-background/60 backdrop-blur-md z-10 shrink-0 h-14 absolute top-0 left-0 right-0">
+                <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">General Chat</span>
+                    {onToggleExpand && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-2 text-muted-foreground hover:text-foreground"
+                            onClick={onToggleExpand}
+                        >
+                            <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded ? "" : "rotate-180")} />
+                        </Button>
+                    )}
+                </div>
 
                 <Popover open={mentionsOpen} onOpenChange={setMentionsOpen}>
                     <PopoverTrigger asChild>
@@ -394,7 +400,7 @@ export function GeneralChat() {
             </div>
 
             {/* Messages Area */}
-            <ScrollAreaPrimitive.Root className="flex-1 bg-background px-1 h-0 relative overflow-hidden">
+            <ScrollAreaPrimitive.Root className="flex-1 bg-background px-1 h-0 relative overflow-hidden pt-14">
                 <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] overscroll-contain" ref={scrollRef as any}>
                     <div className="flex flex-col justify-end min-h-full py-2 pl-3 pr-4">
                         {messages.map((msg, i) => {
@@ -503,14 +509,14 @@ export function GeneralChat() {
                     size="icon"
                     variant="secondary"
                     className="absolute bottom-16 right-4 h-8 w-8 rounded-full shadow-md z-10 opacity-90 hover:opacity-100 transition-opacity"
-                    onClick={scrollToBottom}
+                    onClick={() => scrollToBottom()}
                 >
                     <ChevronDown className="h-4 w-4" />
                 </Button>
             )}
 
             {/* Input Area */}
-            <div className="p-2 bg-background shrink-0 relative z-20">
+            <div className="p-2 bg-background shrink-0 relative z-20 border-t">
                 {/* Mention Popover */}
                 {mentionQuery !== null && suggestions.length > 0 && (
                     <div className="absolute bottom-full left-2 mb-2 w-64 bg-popover border rounded-md shadow-lg overflow-hidden flex flex-col max-h-48 z-50">

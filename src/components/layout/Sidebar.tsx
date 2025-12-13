@@ -81,6 +81,7 @@ export function Sidebar() {
     const [deleteConfirm, setDeleteConfirm] = React.useState<Project | null>(null)
     const [deleteConfirmName, setDeleteConfirmName] = React.useState<string>("")
     const [isSubmitting, setIsSubmitting] = React.useState(false)
+    const [isChatExpanded, setIsChatExpanded] = React.useState(false)
 
     // Form state for editing
     const [newProjectLeadId, setNewProjectLeadId] = React.useState("none")
@@ -278,123 +279,130 @@ export function Sidebar() {
     }
 
     return (
-        <div className="flex h-full flex-col bg-background w-64 border-r">
-            <div className="flex h-14 items-center border-b px-4">
+        <div className="flex h-full flex-col bg-background w-64 border-r overflow-hidden">
+            <div className={cn(
+                "flex items-center px-4 border-b transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden",
+                isChatExpanded ? "max-h-0 opacity-0 border-b-0" : "max-h-14 opacity-100"
+            )}>
                 <h1 className="text-lg font-semibold">{userData.workspaceName || 'CuPI Platform'}</h1>
             </div>
 
-            <ScrollArea className="flex-1">
-                <nav className="p-3">
-                    {/* Dashboard Link */}
-                    <Link
-                        href="/dashboard"
-                        className={cn(
-                            "flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted text-sm",
-                            pathname === "/dashboard" ? "bg-muted font-medium" : "text-muted-foreground"
-                        )}
-                    >
-                        <LayoutDashboard className="h-5 w-5" />
-                        Dashboard
-                    </Link>
+            <div className={cn(
+                "transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden",
+                isChatExpanded ? "flex-[0.001] opacity-0" : "flex-1 opacity-100"
+            )}>
+                <ScrollArea className="h-full">
+                    <nav className="p-3">
+                        {/* Dashboard Link */}
+                        <Link
+                            href="/dashboard"
+                            className={cn(
+                                "flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted text-sm",
+                                pathname === "/dashboard" ? "bg-muted font-medium" : "text-muted-foreground"
+                            )}
+                        >
+                            <LayoutDashboard className="h-5 w-5" />
+                            Dashboard
+                        </Link>
 
-                    {/* Projects Section */}
-                    <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="mt-2">
-                        <div className="flex items-center">
-                            <CollapsibleTrigger className="flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted transition-colors text-sm">
-                                <ChevronDown className={cn("h-5 w-5 transition-transform", !projectsOpen && "-rotate-90")} />
-                                <FolderKanban className="h-5 w-5" />
-                                <span>Projects</span>
-                            </CollapsibleTrigger>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 mr-1"
-                                onClick={() => setCreateDialogOpen(true)}
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <CollapsibleContent className="pl-6 mt-1 space-y-1">
-                            {projects.length === 0 ? (
-                                <p className="text-sm text-muted-foreground px-3 py-1">No projects yet</p>
-                            ) : (
-                                projects.map(project => {
-                                    const isActive = pathname === `/dashboard/projects/${project.id}`
-                                    return (
-                                        <div key={project.id} className="group flex items-center gap-1">
-                                            <Link
-                                                href={`/dashboard/projects/${project.id}`}
-                                                className={cn(
-                                                    "flex-1 rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-muted truncate",
-                                                    isActive ? "bg-muted font-medium" : "text-muted-foreground"
-                                                )}
-                                            >
-                                                {project.name}
-                                            </Link>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-6 w-6 shrink-0 text-muted-foreground/50 hover:text-muted-foreground"
-                                                    >
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="start" side="right" className="w-32 z-50">
-                                                    <DropdownMenuItem onSelect={() => setEditingProject(project)}>
-                                                        <Pencil className="h-4 w-4 mr-2" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    {isAdmin && (
-                                                        <DropdownMenuItem
-                                                            onSelect={() => setDeleteConfirm(project)}
-                                                            className="text-red-600"
-                                                        >
-                                                            <Trash2 className="h-4 w-4 mr-2" />
-                                                            Delete
-                                                        </DropdownMenuItem>
+                        {/* Projects Section */}
+                        <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen} className="mt-2">
+                            <div className="flex items-center">
+                                <CollapsibleTrigger className="flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground hover:bg-muted transition-colors text-sm">
+                                    <ChevronDown className={cn("h-5 w-5 transition-transform", !projectsOpen && "-rotate-90")} />
+                                    <FolderKanban className="h-5 w-5" />
+                                    <span>Projects</span>
+                                </CollapsibleTrigger>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 mr-1"
+                                    onClick={() => setCreateDialogOpen(true)}
+                                >
+                                    <Plus className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <CollapsibleContent className="pl-6 mt-1 space-y-1">
+                                {projects.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground px-3 py-1">No projects yet</p>
+                                ) : (
+                                    projects.map(project => {
+                                        const isActive = pathname === `/dashboard/projects/${project.id}`
+                                        return (
+                                            <div key={project.id} className="group flex items-center gap-1">
+                                                <Link
+                                                    href={`/dashboard/projects/${project.id}`}
+                                                    className={cn(
+                                                        "flex-1 rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-muted truncate",
+                                                        isActive ? "bg-muted font-medium" : "text-muted-foreground"
                                                     )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    )
-                                })
-                            )}
-                        </CollapsibleContent>
-                    </Collapsible>
+                                                >
+                                                    {project.name}
+                                                </Link>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 shrink-0 text-muted-foreground/50 hover:text-muted-foreground"
+                                                        >
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="start" side="right" className="w-32 z-50">
+                                                        <DropdownMenuItem onSelect={() => setEditingProject(project)}>
+                                                            <Pencil className="h-4 w-4 mr-2" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        {isAdmin && (
+                                                            <DropdownMenuItem
+                                                                onSelect={() => setDeleteConfirm(project)}
+                                                                className="text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        )
+                                    })
+                                )}
+                            </CollapsibleContent>
+                        </Collapsible>
 
-                    {/* Other Nav Items */}
-                    <div className="mt-2 space-y-1">
-                        <Link
-                            href="/dashboard/members"
-                            className={cn(
-                                "flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted text-sm",
-                                pathname.startsWith("/dashboard/members") ? "bg-muted font-medium" : "text-muted-foreground"
-                            )}
-                        >
-                            <Users className="h-5 w-5" />
-                            Members
-                        </Link>
-                        <Link
-                            href="/dashboard/settings"
-                            className={cn(
-                                "flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted text-sm",
-                                pathname.startsWith("/dashboard/settings") ? "bg-muted font-medium" : "text-muted-foreground"
-                            )}
-                        >
-                            <Settings className="h-5 w-5" />
-                            Settings
-                        </Link>
-                    </div>
-                </nav>
-            </ScrollArea>
-
-            <div className="h-[300px] shrink-0 border-t">
-                <GeneralChat />
+                        {/* Other Nav Items */}
+                        <div className="mt-2 space-y-1">
+                            <Link
+                                href="/dashboard/settings"
+                                className={cn(
+                                    "flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted text-sm",
+                                    pathname.startsWith("/dashboard/settings") ? "bg-muted font-medium" : "text-muted-foreground"
+                                )}
+                            >
+                                <Settings className="h-5 w-5" />
+                                Settings
+                            </Link>
+                        </div>
+                    </nav>
+                </ScrollArea>
             </div>
 
-            <div className="border-t p-4">
+            <div className={cn(
+                "shrink-0 flex flex-col min-h-0 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+                isChatExpanded ? "grow basis-0" : "grow-0 basis-[320px] border-t"
+            )}>
+                <GeneralChat
+                    isExpanded={isChatExpanded}
+                    onToggleExpand={() => setIsChatExpanded(!isChatExpanded)}
+                />
+            </div>
+
+            <div className={cn(
+                "border-t transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden",
+                isChatExpanded ? "max-h-0 opacity-0 border-t-0 p-0" : "max-h-40 opacity-100 p-4"
+            )}>
                 <div className="flex items-center gap-3 mb-3">
                     {userData.avatar ? (
                         <img
@@ -648,6 +656,6 @@ export function Sidebar() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }
